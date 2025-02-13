@@ -26,18 +26,15 @@ if (MSVC)
   add_definitions(-D _CRT_SECURE_NO_WARNINGS)
 endif()
 
-file(GLOB PROJ_DEP "alglib/src/*.cpp", "alglib/src/*.h")
-add_executable(EdgeLineExtraction 
- 	        edgeline_extraction.cpp
- 	        ${PROJ_DEP})
+file(GLOB PROJ_DEP "alglib/src/*.cpp" "alglib/src/*.h")
 
-# Executables
+# 두 개의 실행 파일만 빌드
 add_executable(MeshPreprocessing mesh_processing.cpp)
-add_executable(EdgelineExtraction edgeline_extraction.cpp)
+add_executable(EdgeLineExtraction edgeline_extraction.cpp ${PROJ_DEP})
 
 # Link Libraries
 target_link_libraries(MeshPreprocessing ${PCL_LIBRARIES} ${CGAL_LIBRARIES} stdc++fs)
-target_link_libraries(EdgelineExtraction ${PCL_LIBRARIES} ${CGAL_LIBRARIES} stdc++fs)
+target_link_libraries(EdgeLineExtraction ${PCL_LIBRARIES} ${CGAL_LIBRARIES} stdc++fs)
 
-#  모든 실행 파일을 한 번에 빌드하도록 설정
-add_custom_target(all_targets ALL DEPENDS MeshPreprocessing EdgelineExtraction)
+# 모든 실행 파일을 한 번에 빌드하도록 설정
+add_custom_target(all_targets ALL DEPENDS MeshPreprocessing EdgeLineExtraction)

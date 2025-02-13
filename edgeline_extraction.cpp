@@ -248,6 +248,15 @@ typedef Matrix<double, 3, 1> Vector3d;
 
 string currentFileName = "";
 string currentMeshFile = "";
+
+// 최종 결과 저장 경로
+const std::string datasetBreaklinesFolder = "../Dataset/Breaklines/";
+const std::string datasetSurfacesFolder   = "../Dataset/Surfaces/";
+
+const std::string tempEdgeFolder          = "../Temp/Temp_edge/";
+const std::string datasetPath_global      = "../Temp/Data";
+const std::string axesFolder = "../Dataset/Axes/";
+
 Eigen::Vector3f avgNormalDirection;
 bool next_step = false;
 
@@ -473,7 +482,7 @@ MatrixXd smoothAndSampleBreaklinesVer4UsingBSpline(MatrixXd& P) {
 	Vector3d sphereCenter(3);
 	double sphereRadius = 1.8;
 	sphereCenter << P(0, 0), P(0, 1), P(0, 2);
-	std::cout << "Initial Sphere Center: " << sphereCenter.transpose() << ", Radius: " << sphereRadius << std::endl;
+	// std::cout << "Initial Sphere Center: " << sphereCenter.transpose() << ", Radius: " << sphereRadius << std::endl;
 
 	vector<MatrixXd> smoothBreakLineVector;
 	Vector3d smoothedPoint(3);
@@ -495,15 +504,6 @@ MatrixXd smoothAndSampleBreaklinesVer4UsingBSpline(MatrixXd& P) {
 		}
 
 		vector<Vector3d> intersectionPointSet = FindLineSphereIntersections(sphereCenter, nextPointOutsideSphere, sphereCenter, sphereRadius);
-		std::cout << "Processing Point: " << P(i, 0) << ", " << P(i, 1) << ", " << P(i, 2) << std::endl;
-
-		if (intersectionPointSet.size() > 0) {
-			std::cout << "Intersection Points: ";
-			for (const auto& pt : intersectionPointSet) {
-				std::cout << "(" << pt(0) << ", " << pt(1) << ", " << pt(2) << ") ";
-			}
-			std::cout << std::endl;
-		}
 
 		if (!intersectionPointSet.empty()) {
 			smoothedPoint = intersectionPointSet[0];
@@ -512,22 +512,18 @@ MatrixXd smoothAndSampleBreaklinesVer4UsingBSpline(MatrixXd& P) {
 					smoothedPoint = pt;
 				}
 			}
-
 			smoothBreakLineVector.push_back(smoothedPoint);
 			sphereCenter = smoothedPoint;
-			std::cout << "Smoothed Point: " << smoothedPoint.transpose() << std::endl;
 		}
-
 		i++;
 	}
 
 	MatrixXd smoothedBreakLine(smoothBreakLineVector.size(), 3);
-	std::cout << "Smoothed Break Line Size: " << smoothedBreakLine.rows() << "x" << smoothedBreakLine.cols() << std::endl;
+	// std::cout << "Smoothed Break Line Size: " << smoothedBreakLine.rows() << "x" << smoothedBreakLine.cols() << std::endl;
 	for (int i = 0; i < smoothBreakLineVector.size(); ++i) {
 		smoothedBreakLine.row(i) << smoothBreakLineVector[i](0), smoothBreakLineVector[i](1), smoothBreakLineVector[i](2);
-		std::cout << "Smoothed Break Line[" << i << "]: " << smoothedBreakLine.row(i) << std::endl;
+		// std::cout << "Smoothed Break Line[" << i << "]: " << smoothedBreakLine.row(i) << std::endl;
 	}
-
 	return smoothedBreakLine;
 }
 
@@ -677,15 +673,15 @@ void getInitialBoundary_UsingPCL_BoundaryAlgo(pcl::PointCloud<pcl::PointNormal>:
 	boundaryCloud->height = 1;
 	boundaryCloud->is_dense = true;
 
-	pcl::io::savePCDFile("boundary.pcd", *boundaryCloud);
-	pcl::io::loadPCDFile("boundary.pcd", *boundaryCloud);
+	pcl::io::savePCDFile(tempEdgeFolder + "boundary.pcd", *boundaryCloud);
+	pcl::io::loadPCDFile(tempEdgeFolder + "boundary.pcd", *boundaryCloud);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr unclusteredPoints(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr boundaryCloud_Improved(new pcl::PointCloud<pcl::PointXYZ>);
 	
 	std::experimental::filesystem::path filePathNew = { currentMeshFile };
 	string fileNameOnly = filePathNew.stem().string().substr(0,14);
 	// string outPathNew = filePathNew.parent_path().string() + "\\";
-	string outPathNew = "../Dataset/";
+	string outPathNew = "../Temp/Data/";
 	
 	pcl::io::loadPLYFile(outPathNew + fileNameOnly + "_unclustered.ply", *unclusteredPoints);
 	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
@@ -709,7 +705,7 @@ void getInitialBoundary_UsingPCL_BoundaryAlgo(pcl::PointCloud<pcl::PointNormal>:
 	}
 	boundaryCloud_Improved->width = static_cast<int>(boundaryCloud_Improved->points.size());
 	boundaryCloud_Improved->height = 1;
-	pcl::io::savePCDFile("boundaryImproved.pcd", *boundaryCloud_Improved);
+	pcl::io::savePCDFile(tempEdgeFolder + "boundaryImproved.pcd", *boundaryCloud_Improved);
 	//-----------------------------------------------------------------------------
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
@@ -720,17 +716,16 @@ void getInitialBoundary_UsingPCL_BoundaryAlgo(pcl::PointCloud<pcl::PointNormal>:
 	outrem.setKeepOrganized(true);
 	// apply filter
 	outrem.filter(*cloud_filtered);
-	pcl::io::savePCDFileASCII("cloud_Filtered.pcd", *cloud_filtered);
+	pcl::io::savePCDFileASCII(tempEdgeFolder + "cloud_Filtered.pcd", *cloud_filtered);
 
-	pcl::io::loadPCDFile("boundary.pcd", *boundaryCloud_Improved);
+	pcl::io::loadPCDFile(tempEdgeFolder + "boundary.pcd", *boundaryCloud_Improved);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_sequenced(new pcl::PointCloud<pcl::PointXYZ>);
 	getPointsInSequence(boundaryCloud_Improved, cloud_sequenced);
 
-	pcl::io::savePLYFile(outPath + "_breakLineFromConcaveHull.ply", *cloud_sequenced);
-	pcl::io::savePCDFileASCII(outPath + "_breakLineFromConcaveHull.pcd", *cloud_sequenced);
+	pcl::io::savePLYFile(tempEdgeFolder + "_breakLineFromConcaveHull.ply", *cloud_sequenced);
+	pcl::io::savePCDFileASCII(tempEdgeFolder + "_breakLineFromConcaveHull.pcd", *cloud_sequenced);
 	cloud_BorderPointsCombined->points.clear();
-	//pcl::copyPointCloud(*cloud_FilteredBreakline, *cloud_BorderPointsCombined);
-	pcl::io::loadPLYFile(outPath + "_breakLineFromConcaveHull.ply", *cloud_BorderPointsCombined);
+	pcl::io::loadPLYFile(tempEdgeFolder + "_breakLineFromConcaveHull.ply", *cloud_BorderPointsCombined);
 }
 
 //--------------------------- testing bspline curve ---------------------------------//
@@ -799,10 +794,11 @@ void fitBSplineSurfaceAndGetNormalsOnProjectedPoints(string pointCloudDataFile, 
 	rs.filter(*cloud_Sampled);
 
 
-	pcl::io::savePCDFile("cloudForSpline.pcd", *cloud_Sampled);
+	// pcl::io::savePCDFile("cloudForSpline.pcd", *cloud_Sampled);
+	pcl::io::savePCDFile(tempEdgeFolder + "cloudForSpline.pcd", *cloud_Sampled);
 
-	string pcd_file = "cloudForSpline.pcd";
-	string file_3dm = "splineSurfaceOutput.3dm";
+	string pcd_file = tempEdgeFolder + "cloudForSpline.pcd";
+	string file_3dm = tempEdgeFolder + "splineSurfaceOutput.3dm";
 
 	pcl::visualization::PCLVisualizer viewer("B-spline surface fitting");
 	viewer.setSize(800, 600);
@@ -829,12 +825,10 @@ void fitBSplineSurfaceAndGetNormalsOnProjectedPoints(string pointCloudDataFile, 
 	// ############################################################################
 	// fit B-spline surface
 
-
 	unsigned order(3);
 	unsigned refinement(3);
 	unsigned iterations(8);
 	unsigned mesh_resolution(128);
-
 
 	pcl::on_nurbs::FittingSurface::Parameter params;
 	params.interior_smoothness = 0.2;
@@ -905,7 +899,8 @@ void fitBSplineSurfaceAndGetNormalsOnProjectedPoints(string pointCloudDataFile, 
 
 	projectedPointCloudWithNormals->width = static_cast<int>(projectedPointCloudWithNormals->points.size());
 	projectedPointCloudWithNormals->height = 1;
-	pcl::io::savePCDFile(currentFileName + "cloudBreaklinePointsOnBSplineSurface.pcd", *projectedPointCloudWithNormals);
+	// pcl::io::savePCDFile(currentFileName + "cloudBreaklinePointsOnBSplineSurface.pcd", *projectedPointCloudWithNormals);
+	pcl::io::savePCDFile(tempEdgeFolder + "cloudBreaklinePointsOnBSplineSurface.pcd", *projectedPointCloudWithNormals);
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_AllPointsOnBSplineSurface(new pcl::PointCloud<pcl::PointNormal>);
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_OriginalPointsOnSurface(new pcl::PointCloud<pcl::PointNormal>);
@@ -942,7 +937,8 @@ void fitBSplineSurfaceAndGetNormalsOnProjectedPoints(string pointCloudDataFile, 
 
 	cloud_AllPointsOnBSplineSurface->width = static_cast<int>(cloud_AllPointsOnBSplineSurface->points.size());
 	cloud_AllPointsOnBSplineSurface->height = 1;
-	pcl::io::savePCDFile(currentFileName + "cloudAllPointsOnBSplineSurface.pcd", *cloud_AllPointsOnBSplineSurface);
+	// pcl::io::savePCDFile(currentFileName + "cloudAllPointsOnBSplineSurface.pcd", *cloud_AllPointsOnBSplineSurface);
+	pcl::io::savePCDFile(tempEdgeFolder + "cloudAllPointsOnBSplineSurface.pcd", *cloud_AllPointsOnBSplineSurface);
 
 }
 
@@ -1529,7 +1525,7 @@ void detectSeparateLineSegments(string b1_FilePath, int len = 10) //len = 10
 	pcl::PointCloud<pcl::PointXYZ>::Ptr rawBreaklinePtsInSegment(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::KdTree<pcl::PointXYZ>::Ptr tree_(new pcl::KdTreeFLANN<pcl::PointXYZ>);
 	//pcl::io::loadPCDFile("_breakLineFromSimpleAlgoVer2.pcd", *rawBreaklinePts);
-	pcl::io::loadPCDFile("CompleteBreakline.pcd", *rawBreaklinePts);
+	pcl::io::loadPCDFile(tempEdgeFolder + "CompleteBreakline.pcd", *rawBreaklinePts);
 	tree_->setInputCloud(rawBreaklinePts);
 	MatrixXd segmentMatrix, allPointsOnSegMatrix;
 	for (size_t i = 0; i < noOfSegmentsDetected; i++)
@@ -1609,9 +1605,9 @@ void estimatePatchNormalsAndBreakLinesFromSimpleAlgo_BSplineSurface(string fileN
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_FilteredBoundary(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_RimFromPointCloudData(new pcl::PointCloud<pcl::PointXYZ>);
 
-	cout << "Getting the inital boundary...";
+	cout << "Getting the inital boundary..." << endl;
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_OriginalSurfaceWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-	pcl::io::loadPCDFile("cloud_Surface_AllSamples_Cleaned.pcd", *cloud_OriginalSurfaceWithNormals);
+	pcl::io::loadPCDFile(tempEdgeFolder + "cloud_Surface_AllSamples_Cleaned.pcd", *cloud_OriginalSurfaceWithNormals);
 	getInitialBoundary_UsingPCL_BoundaryAlgo(cloud_OriginalSurfaceWithNormals, cloud_FragmentBoundaryFromPointCloudData, outPath);
 
 	int numberOfPoints = cloud_FragmentBoundaryFromPointCloudData->points.size();
@@ -1627,14 +1623,14 @@ void estimatePatchNormalsAndBreakLinesFromSimpleAlgo_BSplineSurface(string fileN
 
 	MatrixXd sampledBreakLineResults = smoothAndSampleBreaklinesVer4UsingBSpline(P);
 
-	std::cout << "Sampled Break Line Results Size: " << sampledBreakLineResults.rows() << "x" << sampledBreakLineResults.cols() << std::endl;
+	// std::cout << "Sampled Break Line Results Size: " << sampledBreakLineResults.rows() << "x" << sampledBreakLineResults.cols() << std::endl;
 
-	std::cout << "Sampled Break Line Results:" << std::endl;
+	// std::cout << "Sampled Break Line Results:" << std::endl;
 	for (int i = 0; i < sampledBreakLineResults.rows(); ++i) {
 		for (int j = 0; j < sampledBreakLineResults.cols(); ++j) {
-			std::cout << sampledBreakLineResults(i, j) << " ";
+			// std::cout << sampledBreakLineResults(i, j) << " ";
 		}
-		std::cout << std::endl;
+		// std::cout << std::endl;
 	}
 
 	MatrixXd matrixPointCloud = sampledBreakLineResults;
@@ -1656,7 +1652,7 @@ void estimatePatchNormalsAndBreakLinesFromSimpleAlgo_BSplineSurface(string fileN
 		cloud->points[i].z = matrixPointCloud(i, 2);
 	}
 
-	pcl::io::savePCDFile("smoothed.pcd", *cloud);
+	pcl::io::savePCDFile(tempEdgeFolder + "smoothed.pcd", *cloud);
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr projectedCloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
 	fitBSplineSurfaceAndGetNormalsOnProjectedPoints(fileName, cloud, projectedCloudWithNormals);
@@ -1732,7 +1728,7 @@ void estimatePatchNormalsAndBreakLinesFromSimpleAlgo_BSplineSurface(string fileN
 		ProjectedMatrix(i, 4) = MatrixNormals(i, 1);
 		ProjectedMatrix(i, 5) = MatrixNormals(i, 2);;
 	}
-	writeMatrix_to_XYZ(ProjectedMatrix, "CompleteBreakline.xyz", 6);
+	writeMatrix_to_XYZ(ProjectedMatrix, tempEdgeFolder + "CompleteBreakline.xyz", 6);
 	
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_New(new pcl::PointCloud<pcl::PointNormal>);
 	cloud_New->width = ProjectedMatrix.rows();
@@ -1750,7 +1746,7 @@ void estimatePatchNormalsAndBreakLinesFromSimpleAlgo_BSplineSurface(string fileN
 		cloud_New->points[i].normal_z = ProjectedMatrix(i, 5);
 	}
 
-	pcl::io::savePCDFile("CompleteBreakline.pcd", *cloud);
+	pcl::io::savePCDFile(tempEdgeFolder + "CompleteBreakline.pcd", *cloud);
 }
 
 void cleanSamples(string pointCloudDataFile)
@@ -1788,8 +1784,6 @@ void cleanSamples(string pointCloudDataFile)
 	MatrixXd T(6, numberOfPoints);
 	std::vector<std::string> results;
 
-
-
 	for (int i = 0; i < numberOfPoints; i++) //points.size(); i++)
 	{
 		boost::split(results, fileContents[i], [](char c) {return c == ' '; });
@@ -1814,7 +1808,8 @@ void cleanSamples(string pointCloudDataFile)
 	sor.setMeanK(50);
 	sor.setStddevMulThresh(9);
 	sor.filter(*cloud_filteredB);
-	pcl::io::savePCDFileASCII("cloud_Surface_AllSamples_Cleaned.pcd", *cloud_filteredB);
+	// pcl::io::savePCDFileASCII("cloud_Surface_AllSamples_Cleaned.pcd", *cloud_filteredB);
+	pcl::io::savePCDFileASCII(tempEdgeFolder + "cloud_Surface_AllSamples_Cleaned.pcd", *cloud_filteredB);
 
 	float sumNX = 0, sumNY = 0, sumNZ = 0;\
 
@@ -1851,7 +1846,8 @@ void cleanSamples(string pointCloudDataFile)
 		pointCloudDataFile.erase(period_idx);
 	}
 
-	string outPath = "pointCloudFromMesh.xyz";
+	// string outPath = "pointCloudFromMesh.xyz";
+	string outPath = tempEdgeFolder + "pointCloudFromMesh.xyz";
 
 	ofstream myfileWrite;
 	myfileWrite.open(outPath);
@@ -1865,7 +1861,8 @@ void cleanSamples(string pointCloudDataFile)
 	}
 	myfileWrite.close();
 
-	outPath = pointCloudDataFile + "_Cleaned.xyz";
+	// outPath = pointCloudDataFile + "_Cleaned.xyz";
+	outPath = tempEdgeFolder + (pointCloudDataFile + "_Cleaned.xyz");
 	myfileWrite.open(outPath);
 	for (size_t i = 0; i < P.rows(); i++)
 	{
@@ -2516,15 +2513,13 @@ void getPointsOnFracturedSurface(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_Break
 	cloudPointsOnly->width = cloudPointsOnly->points.size();
 	cloudPointsOnly->height = 1;
 
-	//pcl::PointXYZ searchPoint;
-
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_PointsNearBreaklineSeg(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<PointNormal>::Ptr cloud_PointNormalsNearBreaklineSeg(new pcl::PointCloud<PointNormal>);
 	vector<int> indices_PointsNearBreaklineSeg;
 	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
 	kdtree.setInputCloud(cloudPointsOnly);
-	float radius = 3;// 12; // 6; // 12;// 6;
+	float radius = 3;
 	vector<int> all_Indices;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ClippedBreakLineSeg(new pcl::PointCloud<pcl::PointXYZ>);
@@ -2617,9 +2612,6 @@ void getPointsOnFracturedSurface(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_Break
 			cloud_FilteredPointNormalsNearBreaklineSeg->width = cloud_FilteredPointNormalsNearBreaklineSeg->points.size();
 			cloud_FilteredPointNormalsNearBreaklineSeg->height = 1;
 
-
-			//pcl::io::savePLYFile(sampledDataWithNormals + "_" + to_string(segNo) + "_Piece" + to_string(p) +".ply", *cloud_FilteredPointNormalsNearBreaklineSeg);
-
 			clusteringOnNormalsForDetectingFracturedSurfacePts(cloud_FilteredPointNormalsNearBreaklineSeg, sampledDataWithNormals + "_" + to_string(segNo) + "_Piece" + to_string(p), cloud_PointsOnFracturedSurface, cloud_PointsOnIntExtSurface);
 
 		}
@@ -2630,338 +2622,269 @@ void getPointsOnFracturedSurface(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_Break
 
 void processFragmentData(string surfacePointCloudFilePath, string fragmentMeshFilePath)
 {
-	string fileName = surfacePointCloudFilePath;
-	const size_t last_slash_idx = fileName.find_last_of("/\\");
-	if (std::string::npos != last_slash_idx)
-	{
-		fileName.erase(0, last_slash_idx + 1);
-	}
-	const size_t period_idx = fileName.rfind('.');
-	if (std::string::npos != period_idx)
-	{
-		fileName.erase(period_idx);
-	}
+    // -------------------- 파일명 추출 및 전역 변수 갱신 --------------------
+    string fileName = surfacePointCloudFilePath;
+    const size_t last_slash_idx = fileName.find_last_of("/\\");
+    if (std::string::npos != last_slash_idx)
+    {
+        fileName.erase(0, last_slash_idx + 1);
+    }
+    const size_t period_idx = fileName.rfind('.');
+    if (std::string::npos != period_idx)
+    {
+        fileName.erase(period_idx);
+    }
 
-	string meshFileName = fragmentMeshFilePath;
-	const size_t last_slash_idxm = meshFileName.find_last_of("/\\");
-	if (std::string::npos != last_slash_idxm)
-	{
-		meshFileName.erase(0, last_slash_idxm + 1);
-	}
+    string meshFileName = fragmentMeshFilePath;
+    const size_t last_slash_idxm = meshFileName.find_last_of("/\\");
+    if (std::string::npos != last_slash_idxm)
+    {
+        meshFileName.erase(0, last_slash_idxm + 1);
+    }
+    const size_t period_idxm = meshFileName.rfind('.');
+    if (std::string::npos != period_idxm)
+    {
+        meshFileName.erase(period_idxm);
+    }
 
-	const size_t period_idxm = meshFileName.rfind('.');
-	if (std::string::npos != period_idxm)
-	{
-		meshFileName.erase(period_idxm);
-	}
+    currentFileName = fileName;
+    currentMeshFile = meshFileName;
 
-	currentFileName = fileName;
-	currentMeshFile = meshFileName;
+    cout << "Fragment: " + fragmentMeshFilePath << endl << endl;
 
-	cout << "Fragment: " + fragmentMeshFilePath << endl << endl;
-	
-	cleanSamples(surfacePointCloudFilePath); //updated 8July21 because it results in holes in surface pointcloud
-	
-	estimatePatchNormalsAndBreakLinesFromSimpleAlgo_BSplineSurface("pointCloudFromMesh.xyz", false); 
-	detectSeparateLineSegments("CompleteBreakline.xyz");
-	MatrixXd matrix_breakLineSeg;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_breakLineSeg(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_CompleteBreakline(new pcl::PointCloud<pcl::PointNormal>);
+    // -------------------- 전처리: 표면 포인트 클라우드 클린업 및 breakline 추출 --------------------
+	cout << "Cleaning surface point cloud..." << endl;
+    cleanSamples(surfacePointCloudFilePath); // (표면 포인트 클라우드 클린업 함수)
+    cout << "Estimating patch normals and breaklines..." << endl;
+    estimatePatchNormalsAndBreakLinesFromSimpleAlgo_BSplineSurface(tempEdgeFolder + "pointCloudFromMesh.xyz", false);
+    cout << "Detecting separate line segments..." << endl;
+    detectSeparateLineSegments(tempEdgeFolder + "CompleteBreakline.xyz");
 
+    MatrixXd matrix_breakLineSeg;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_breakLineSeg(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointNormal>::Ptr cloud_CompleteBreakline(new pcl::PointCloud<pcl::PointNormal>);
 
-	//*********************************************************************
-	//---------------------  Rim detection  -------------------------------
-	//*********************************************************************
-	cout << "Detecting rim..." << endl;
-	int segCount = 1;
+    // -------------------- Rim 검출 및 클러스터 정보 산출 --------------------
+    cout << "Detecting rim..." << endl;
+    int segCount = 1;
 
-	typedef vector<boost::filesystem::path> vec;             // store paths,
-	vec v;                                // so we can sort them later
-	boost::filesystem::path p("Segments/");   // p reads clearer than argv[1] in the following code
-	copy(boost::filesystem::directory_iterator(p), boost::filesystem::directory_iterator(), back_inserter(v));
-	sort(v.begin(), v.end());             // sort, since directory iteration is not ordered on some file systems
+    typedef vector<boost::filesystem::path> vec;
+    vec v;  // "Segments" 폴더 내 파일들을 읽음
+    boost::filesystem::path p("Segments/");
+    copy(boost::filesystem::directory_iterator(p),
+         boost::filesystem::directory_iterator(),
+         back_inserter(v));
+    sort(v.begin(), v.end());  // 정렬
 
-	vector<string> index;
-	int segStartIndex = 1;
-	bool atLeastOneSegIsRim = false;
+    vector<string> index;
+    int segStartIndex = 1;
+    bool atLeastOneSegIsRim = false;
+    int totalPtsCounter = 0;
+    PointNormal tmpPtN;
 
-	int totalPtsCounter = 0;
-	PointNormal tmpPtN;
+    // 축 정보 확인 (Axes 폴더)
+    std::string baseFileName = currentMeshFile.substr(0, currentMeshFile.find("_Mesh"));
+    std::string axisFileName = baseFileName + "_Axis.xyz";
+    std::string axisFilePath = "../Dataset/Axes/" + axisFileName;
+    bool axisInfoAvailable = std::experimental::filesystem::exists(axisFilePath);
 
-	//bool axisInfoAvailable = std::experimental::filesystem::exists("All Axes\\" + currentMeshFile + ".obj_axis_Both_potsac.txt");
-	std::string baseFileName = currentMeshFile.substr(0, currentMeshFile.find("_Mesh")); // 
-	std::string axisFileName = baseFileName + "_Axis.xyz";
-	std::string axisFilePath = "../Dataset/Axes/" + axisFileName;
-	bool axisInfoAvailable = std::experimental::filesystem::exists(axisFilePath);
+    vector<double> stdDevList;
+    for (vec::const_iterator it(v.begin()), it_end(v.end()); it != it_end; ++it)
+    {
+        string sTmp = (*it).string();
+        matrix_breakLineSeg = readFile((*it).string(), 6);
+        cloud_breakLineSeg->points.clear();
+        for (size_t i = 0; i < matrix_breakLineSeg.rows() - 1; i++)
+        {
+            cloud_breakLineSeg->points.push_back(
+                pcl::PointXYZ(matrix_breakLineSeg(i, 0),
+                              matrix_breakLineSeg(i, 1),
+                              matrix_breakLineSeg(i, 2)));
+            tmpPtN.x = matrix_breakLineSeg(i, 0);
+            tmpPtN.y = matrix_breakLineSeg(i, 1);
+            tmpPtN.z = matrix_breakLineSeg(i, 2);
+            tmpPtN.normal_x = matrix_breakLineSeg(i, 3);
+            tmpPtN.normal_y = matrix_breakLineSeg(i, 4);
+            tmpPtN.normal_z = matrix_breakLineSeg(i, 5);
+            cloud_CompleteBreakline->points.push_back(tmpPtN);
+            totalPtsCounter++;
+        }
+        cloud_breakLineSeg->width = cloud_breakLineSeg->points.size();
+        cloud_breakLineSeg->height = 1;
 
+        std::experimental::filesystem::path filePathTemp = { fragmentMeshFilePath };
+        string fileNameOnly = filePathTemp.stem().string().substr(0, 14);
+        // 임시 outPath는 "../Dataset/"로 지정 (향후 Surfaces 폴더 등으로 옮길 수 있음)
+        string outPath = "../Temp/Data/";
+        bool isRim = isBreaklineSegARim(cloud_breakLineSeg, outPath + fileNameOnly + "_SampledWithNormals.ply", segCount);
+        if (axisInfoAvailable)
+        {
+            double stdev = isBreaklineSegARim_DistanceFromAxis(cloud_breakLineSeg, segCount);
+            stdDevList.push_back(stdev);
+        }
+        index.push_back(to_string(segStartIndex) + " " + to_string(totalPtsCounter) + " " + (isRim ? "1" : "0"));
+        segStartIndex = totalPtsCounter + 1;
+        segCount++;
+    }
+    cloud_CompleteBreakline->width = cloud_CompleteBreakline->points.size();
+    cloud_CompleteBreakline->height = 1;
 
-	vector<double> stdDevList;
-	for (vec::const_iterator it(v.begin()), it_end(v.end()); it != it_end; ++it)
-	{
-		string sTmp = (*it).string();
+    if (axisInfoAvailable)
+    {
+        cout << "Axis information is available." << endl;
+        double sum = std::accumulate(stdDevList.begin(), stdDevList.end(), 0.0);
+        double mean = sum / stdDevList.size();
+        for (size_t q = 0; q < stdDevList.size(); q++)
+        {
+            if (100 * stdDevList[q] / mean < 50)
+            {
+                index[q].pop_back();
+                index[q].push_back('1');
+                atLeastOneSegIsRim = true;
+                cout << "Seg. " << q << " PercentDev= " << (100 * stdDevList[q] / mean) << " => Rim" << endl;
+            }
+            else
+            {
+                index[q].pop_back();
+                index[q].push_back('0');
+                cout << "Seg. " << q << " PercentDev= " << (100 * stdDevList[q] / mean) << " => Not Rim" << endl;
+            }
+        }
+    }
+    else
+    {
+        cout << "Axis information is not available." << endl;
+    }
+    
+    // -------------------- 완성 Breakline 파일 저장 --------------------
+    // 원래 currentFileName은 예: "Pot_A_Piece_01_Surface_0" 이었으므로, 이를 "Pot_A_Piece_01_Breakline_0"으로 수정
+    string breaklineFileName = currentFileName;
+    size_t posSurface = breaklineFileName.find("Surface_0");
+    if (posSurface != string::npos)
+        breaklineFileName.replace(posSurface, string("Surface_0").length(), "Breakline_0");
+    else {
+        posSurface = breaklineFileName.find("Surface_1");
+        if (posSurface != string::npos)
+            breaklineFileName.replace(posSurface, string("Surface_1").length(), "Breakline_1");
+    }
+    // 저장 폴더: Dataset/Breaklines
+    const std::string breaklinesDir = "../Dataset/Breaklines/";
+    std::filesystem::create_directories(breaklinesDir);
+	string completeBreaklinePath = tempEdgeFolder + "CompleteBreakline.xyz";
+	// 최종 결과는 OUTPUT_BREAKLINES_FOLDER에 저장
+	string pcdFilePath = datasetBreaklinesFolder + breaklineFileName + ".pcd";
+	string plyFilePath = datasetBreaklinesFolder + breaklineFileName + ".ply";
+	string xyzFilePath = datasetBreaklinesFolder + breaklineFileName + ".xyz";
 
-		matrix_breakLineSeg = readFile((*it).string(), 6);
-		cloud_breakLineSeg->points.clear();
-		for (size_t i = 0; i < matrix_breakLineSeg.rows()-1; i++)
-		{
-			cloud_breakLineSeg->points.push_back(pcl::PointXYZ(matrix_breakLineSeg(i, 0), matrix_breakLineSeg(i, 1), matrix_breakLineSeg(i, 2)));
-
-			tmpPtN.x = matrix_breakLineSeg(i, 0);
-			tmpPtN.y = matrix_breakLineSeg(i, 1);
-			tmpPtN.z = matrix_breakLineSeg(i, 2);
-			tmpPtN.normal_x = matrix_breakLineSeg(i, 3);
-			tmpPtN.normal_y = matrix_breakLineSeg(i, 4);
-			tmpPtN.normal_z = matrix_breakLineSeg(i, 5);
-
-			cloud_CompleteBreakline->points.push_back(tmpPtN);
-			totalPtsCounter++;
-		}
-		cloud_breakLineSeg->width = cloud_breakLineSeg->points.size();
-		cloud_breakLineSeg->height = 1;
-
-		std::experimental::filesystem::path filePath = { fragmentMeshFilePath };
-		string fileNameOnly = filePath.stem().string().substr(0,14);
-		// string outPath = filePath.parent_path().string() + "\\";
-		string outPath = "../Dataset/";
-		bool isRim = isBreaklineSegARim(cloud_breakLineSeg, outPath + fileNameOnly + "_SampledWithNormals.ply", segCount);
-		//isRim = false;
-
-		if (axisInfoAvailable)
-		{
-			double stdev = isBreaklineSegARim_DistanceFromAxis(cloud_breakLineSeg, segCount);
-			stdDevList.push_back(stdev);
-		}
-
-		index.push_back(to_string(segStartIndex) + " " + to_string(totalPtsCounter) + " " + (isRim ? "1" : "0"));
-		segStartIndex = totalPtsCounter + 1;
-
-
-		segCount++;
-
-	}
-	cloud_CompleteBreakline->width = cloud_CompleteBreakline->points.size();
-	cloud_CompleteBreakline->height = 1;
-
-	if (axisInfoAvailable)
-	{
-		cout << "Axis information is available." << endl;
-
-		double sum = std::accumulate(stdDevList.begin(), stdDevList.end(), 0.0);
-		double mean = sum / stdDevList.size();
-		for (size_t q = 0; q < stdDevList.size(); q++)
-		{
-			if (100 * stdDevList[q] / mean < 50)
-			{
-				index[q].pop_back();
-				index[q].push_back('1');
-				atLeastOneSegIsRim = true;
-				cout << "Seg. " << q << " PercentDev= " << (100 * stdDevList[q] / mean) << " => Rim" << endl;
-			}
-			else
-			{
-				index[q].pop_back();
-				index[q].push_back('0');
-				cout << "Seg. " << q << " PercentDev= " << (100 * stdDevList[q] / mean) << " => Not Rim" << endl;
-			}
-		}
-	}
-	else
-	{
-		cout << "Axis information is not available." << endl;
-	}
-
-	//*********************************************************************
-
-
-	string pcdFilePath = fileName + "_CompleteBreaklines.pcd";
 	pcl::io::savePCDFile(pcdFilePath, *cloud_CompleteBreakline);
-	string plyFilePath = fileName + "_CompleteBreaklines.ply";
 	pcl::io::savePLYFile(plyFilePath, *cloud_CompleteBreakline);
-	
+	fs::rename(completeBreaklinePath, xyzFilePath);
 
+    
+    // -------------------- (추가) Fractured surface 관련 처리 --------------------
+    cout << "Getting points on fractured surface..." << endl;
+    segCount = 1;
+    typedef vector<boost::filesystem::path> vecB;
+    vecB vB;
+    copy(boost::filesystem::directory_iterator(p), boost::filesystem::directory_iterator(), back_inserter(vB));
+    sort(vB.begin(), vB.end());
+    index.clear();
+    segStartIndex = 1;
+    pcl::PointCloud<pcl::PointNormal>::Ptr cloud_PointsOnFracturedSurface(new pcl::PointCloud<pcl::PointNormal>);
+    pcl::PointCloud<pcl::PointNormal>::Ptr cloud_PointsOnIntExtSurfaceNearBreakline(new pcl::PointCloud<pcl::PointNormal>);
+    totalPtsCounter = 0;
+    for (vecB::const_iterator it(vB.begin()), it_end(vB.end()); it != it_end; ++it)
+    {
+        string sTmp = (*it).string();
+        matrix_breakLineSeg = readFile((*it).string(), 6);
+        cloud_breakLineSeg->points.clear();
+        for (size_t i = 0; i < matrix_breakLineSeg.rows(); i++)
+        {
+            cloud_breakLineSeg->points.push_back(
+                pcl::PointXYZ(matrix_breakLineSeg(i, 0),
+                              matrix_breakLineSeg(i, 1),
+                              matrix_breakLineSeg(i, 2)));
+            tmpPtN.x = matrix_breakLineSeg(i, 0);
+            tmpPtN.y = matrix_breakLineSeg(i, 1);
+            tmpPtN.z = matrix_breakLineSeg(i, 2);
+            tmpPtN.normal_x = matrix_breakLineSeg(i, 3);
+            tmpPtN.normal_y = matrix_breakLineSeg(i, 4);
+            tmpPtN.normal_z = matrix_breakLineSeg(i, 5);
+            cloud_CompleteBreakline->points.push_back(tmpPtN);
+            totalPtsCounter++;
+        }
+        cloud_breakLineSeg->width = cloud_breakLineSeg->points.size();
+        cloud_breakLineSeg->height = 1;
+        std::experimental::filesystem::path filePathTemp = { fragmentMeshFilePath };
+        string fileNameOnly = filePathTemp.stem().string().substr(0, 14);
+        string outPathTemp = "../Temp/Data/";
+        bool isRim = isBreaklineSegARim(cloud_breakLineSeg, outPathTemp + fileNameOnly + "_SampledWithNormals.ply", segCount);
+        index.push_back(to_string(segStartIndex) + " " + to_string(totalPtsCounter) + " " + (isRim ? "1" : "0"));
+        segStartIndex = totalPtsCounter + 1;
+        segCount++;
+    }
+    cloud_CompleteBreakline->width = cloud_CompleteBreakline->points.size();
+    cloud_CompleteBreakline->height = 1;
 
-	stringstream ss;
-	ifstream myfile(pcdFilePath);
-	std::vector<std::string> fileContents;
-	std::string str;
-	std::string file_contents;
-	int numberOfPoints;
+    cloud_PointsOnFracturedSurface->width = int(cloud_PointsOnFracturedSurface->points.size());
+    cloud_PointsOnFracturedSurface->height = 1;
+    cloud_PointsOnIntExtSurfaceNearBreakline->width = int(cloud_PointsOnIntExtSurfaceNearBreakline->points.size());
+    cloud_PointsOnIntExtSurfaceNearBreakline->height = 1;
 
-	int counter = 0;
-	//Reading file contents
-	while (std::getline(myfile, str))
-	{
-		fileContents.push_back(str);
-		if (counter == 0)
-		{
-			str = "# " + to_string(segCount - 1) + " " + to_string(totalPtsCounter) + " " + (atLeastOneSegIsRim ? "1" : "0");
-			fileContents.push_back(str);
-			for (size_t i = 0; i < index.size(); i++)
-			{
-				fileContents.push_back("# " + index[i]);
-			}
-		}
-		counter++;
-	}
-	myfile.close();
-	fs::remove(pcdFilePath);
-
-	ofstream newFile(pcdFilePath, std::ios_base::app);
-	for (size_t i = 0; i < fileContents.size(); i++)
-	{
-		newFile << fileContents[i] << '\n';
-	}
-	newFile.close();
-
-	//copying the brealines in xyz file as well
-	fs::rename("CompleteBreakline.xyz", fileName + "_CompleteBreaklines.xyz");
-
-	//*********************************************************************
-	//-------------  Getting points on fractured surface  -----------------
-	//*********************************************************************
-	cout << "Getting points on fractured surface..." << endl;
-	segCount = 1;
-
-	typedef vector<boost::filesystem::path> vecB;             // store paths,
-	vecB vB;                                // so we can sort them later
-	copy(boost::filesystem::directory_iterator(p), boost::filesystem::directory_iterator(), back_inserter(vB));
-	sort(vB.begin(), vB.end());             // sort, since directory iteration is not ordered on some file systems
-
-	index.clear();
-	segStartIndex = 1;
-
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_PointsOnFracturedSurface(new pcl::PointCloud<pcl::PointNormal>);
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_PointsOnIntExtSurfaceNearBreakline(new pcl::PointCloud<pcl::PointNormal>);
-
-	totalPtsCounter = 0;
-	for (vec::const_iterator it(vB.begin()), it_end(vB.end()); it != it_end; ++it)
-	{
-		//cout << "   " << *it << '\n';
-		string sTmp = (*it).string();
-
-		matrix_breakLineSeg = readFile((*it).string(), 6);
-		cloud_breakLineSeg->points.clear();
-		for (size_t i = 0; i < matrix_breakLineSeg.rows(); i++)
-		{
-			cloud_breakLineSeg->points.push_back(pcl::PointXYZ(matrix_breakLineSeg(i, 0), matrix_breakLineSeg(i, 1), matrix_breakLineSeg(i, 2)));
-
-			tmpPtN.x = matrix_breakLineSeg(i, 0);
-			tmpPtN.y = matrix_breakLineSeg(i, 1);
-			tmpPtN.z = matrix_breakLineSeg(i, 2);
-			tmpPtN.normal_x = matrix_breakLineSeg(i, 3);
-			tmpPtN.normal_y = matrix_breakLineSeg(i, 4);
-			tmpPtN.normal_z = matrix_breakLineSeg(i, 5);
-			cloud_CompleteBreakline->points.push_back(tmpPtN);
-			totalPtsCounter++;
-		}
-		cloud_breakLineSeg->width = cloud_breakLineSeg->points.size();
-		cloud_breakLineSeg->height = 1;
-
-		std::experimental::filesystem::path filePath = { fragmentMeshFilePath };
-		string fileNameOnly = filePath.stem().string().substr(0,14);
-		string outPath = "../Dataset/";
-		getPointsOnFracturedSurface(cloud_breakLineSeg, fragmentMeshFilePath, outPath + fileNameOnly + "_SampledWithNormals.ply", segCount, cloud_PointsOnFracturedSurface, cloud_PointsOnIntExtSurfaceNearBreakline);
-
-		segStartIndex = totalPtsCounter + 1;
-		segCount++;
-	}
-
-	cloud_PointsOnFracturedSurface->width = int(cloud_PointsOnFracturedSurface->points.size());
-	cloud_PointsOnFracturedSurface->height = 1;
-
-	cloud_PointsOnIntExtSurfaceNearBreakline->width = int(cloud_PointsOnIntExtSurfaceNearBreakline->points.size());
-	cloud_PointsOnIntExtSurfaceNearBreakline->height = 1;
-
-	//removing duplicate points
-	pcl::PointCloud<PointNormal>::Ptr cloud_PointsOnFracturedSurfaceNoDuplicates(new pcl::PointCloud<PointNormal>);
-	std::vector<PointNormal> vectorPointNormal;
-	for (size_t i = 0; i < cloud_PointsOnFracturedSurface->points.size(); i++)
-	{
-		vectorPointNormal.push_back(cloud_PointsOnFracturedSurface->points[i]);
-	}
-	std::sort(vectorPointNormal.begin(), vectorPointNormal.end(), myobject2);
-
-	if (vectorPointNormal.size() > 0)
-	{
-		for (size_t i = 0; i < vectorPointNormal.size() - 1; i++)
-		{
-			if ((vectorPointNormal[i].x == vectorPointNormal[i + 1].x) && (vectorPointNormal[i].y == vectorPointNormal[i + 1].y) && (vectorPointNormal[i].z == vectorPointNormal[i + 1].z))
-			{
-
-			}
-			else
-			{
-				cloud_PointsOnFracturedSurfaceNoDuplicates->points.push_back(vectorPointNormal[i]);
-			}
-		}
-
-		cloud_PointsOnFracturedSurfaceNoDuplicates->width = cloud_PointsOnFracturedSurfaceNoDuplicates->points.size();
-		cloud_PointsOnFracturedSurfaceNoDuplicates->height = 1;
-		pcl::io::savePCDFile(currentFileName + "_FracturedSurfacePts.pcd", *cloud_PointsOnFracturedSurfaceNoDuplicates);
-
-
-		//removing duplicate int-ext points
-		pcl::PointCloud<PointNormal>::Ptr cloud_PointsOnIntExtSurfaceNoDuplicates(new pcl::PointCloud<PointNormal>);
-		std::vector<PointNormal> vectorPointNormal2;
-		for (size_t i = 0; i < cloud_PointsOnIntExtSurfaceNearBreakline->points.size(); i++)
-		{
-			vectorPointNormal2.push_back(cloud_PointsOnIntExtSurfaceNearBreakline->points[i]);
-		}
-		std::sort(vectorPointNormal2.begin(), vectorPointNormal2.end(), myobject2);
-
-
-		for (size_t i = 0; i < vectorPointNormal2.size() - 1; i++)
-		{
-			if ((vectorPointNormal2[i].x == vectorPointNormal2[i + 1].x) && (vectorPointNormal2[i].y == vectorPointNormal2[i + 1].y) && (vectorPointNormal2[i].z == vectorPointNormal2[i + 1].z))
-			{
-
-			}
-			else
-			{
-				cloud_PointsOnIntExtSurfaceNoDuplicates->points.push_back(vectorPointNormal2[i]);
-			}
-		}
-		cloud_PointsOnIntExtSurfaceNoDuplicates->width = cloud_PointsOnIntExtSurfaceNoDuplicates->points.size();
-		cloud_PointsOnIntExtSurfaceNoDuplicates->height = 1;
-		pcl::io::savePCDFile(currentFileName + "_IntExtSurfacePtsNearBreakline.pcd", *cloud_PointsOnIntExtSurfaceNoDuplicates);
-	}
-
-	cloud_CompleteBreakline->width = cloud_CompleteBreakline->points.size();
-	cloud_CompleteBreakline->height = 1;
-	//*********************************************************************
-
-	// std::wstring newSegFolderW = std::wstring(L"Segments_") + std::wstring(fileName.begin(), fileName.end());
-	// std::wstring oldFolderW = L"Segments";
-	// RemoveDirectory(newSegFolderW.c_str());
-	// MoveFileW(oldFolderW.c_str(), newSegFolderW.c_str());
-
-	// newSegFolderW = std::wstring(L"SegmentsRawPts_") + std::wstring(fileName.begin(), fileName.end());
-	// oldFolderW = L"SegmentsRawPts";
-	// RemoveDirectory(newSegFolderW.c_str());
-	// MoveFileW(oldFolderW.c_str(), newSegFolderW.c_str());
+    pcl::PointCloud<PointNormal>::Ptr cloud_PointsOnFracturedSurfaceNoDuplicates(new pcl::PointCloud<PointNormal>);
+    vector<PointNormal> vectorPointNormal;
+    for (size_t i = 0; i < cloud_PointsOnFracturedSurface->points.size(); i++)
+    {
+        vectorPointNormal.push_back(cloud_PointsOnFracturedSurface->points[i]);
+    }
+    sort(vectorPointNormal.begin(), vectorPointNormal.end(), myobject2);
+    if (!vectorPointNormal.empty())
+    {
+        for (size_t i = 0; i < vectorPointNormal.size() - 1; i++)
+        {
+            if ((vectorPointNormal[i].x == vectorPointNormal[i + 1].x) &&
+                (vectorPointNormal[i].y == vectorPointNormal[i + 1].y) &&
+                (vectorPointNormal[i].z == vectorPointNormal[i + 1].z))
+            {
+                // 중복은 건너뛰기
+            }
+            else
+            {
+                cloud_PointsOnFracturedSurfaceNoDuplicates->points.push_back(vectorPointNormal[i]);
+            }
+        }
+        cloud_PointsOnFracturedSurfaceNoDuplicates->width = cloud_PointsOnFracturedSurfaceNoDuplicates->points.size();
+        cloud_PointsOnFracturedSurfaceNoDuplicates->height = 1;
+        pcl::io::savePCDFile(currentFileName + "_FracturedSurfacePts.pcd", *cloud_PointsOnFracturedSurfaceNoDuplicates);
+        
+        pcl::PointCloud<PointNormal>::Ptr cloud_PointsOnIntExtSurfaceNoDuplicates(new pcl::PointCloud<PointNormal>);
+        vector<PointNormal> vectorPointNormal2;
+        for (size_t i = 0; i < cloud_PointsOnIntExtSurfaceNearBreakline->points.size(); i++)
+        {
+            vectorPointNormal2.push_back(cloud_PointsOnIntExtSurfaceNearBreakline->points[i]);
+        }
+        sort(vectorPointNormal2.begin(), vectorPointNormal2.end(), myobject2);
+        for (size_t i = 0; i < vectorPointNormal2.size() - 1; i++)
+        {
+            if ((vectorPointNormal2[i].x == vectorPointNormal2[i + 1].x) &&
+                (vectorPointNormal2[i].y == vectorPointNormal2[i + 1].y) &&
+                (vectorPointNormal2[i].z == vectorPointNormal2[i + 1].z))
+            {
+                // 중복 건너뛰기
+            }
+            else
+            {
+                cloud_PointsOnIntExtSurfaceNoDuplicates->points.push_back(vectorPointNormal2[i]);
+            }
+        }
+        cloud_PointsOnIntExtSurfaceNoDuplicates->width = cloud_PointsOnIntExtSurfaceNoDuplicates->points.size();
+        cloud_PointsOnIntExtSurfaceNoDuplicates->height = 1;
+        pcl::io::savePCDFile(currentFileName + "_IntExtSurfacePtsNearBreakline.pcd", *cloud_PointsOnIntExtSurfaceNoDuplicates);
+    }
+    
+    cloud_CompleteBreakline->width = cloud_CompleteBreakline->points.size();
+    cloud_CompleteBreakline->height = 1;
 }
-
-
-// void loadOBJ(string objFilePath, Eigen::Matrix4f& transform)
-// {
-
-// 	pcl::TextureMesh mesh1;
-// 	pcl::io::loadPolygonFileOBJ(objFilePath, mesh1);
-// 	pcl::TextureMesh mesh2;
-// 	pcl::io::loadOBJFile(objFilePath, mesh2);
-// 	mesh1.tex_materials = mesh2.tex_materials;
-
-// 	pcl::PointCloud<pcl::PointXYZ> cloud;
-// 	pcl::fromPCLPointCloud2(mesh1.cloud, cloud);
-// 	pcl::transformPointCloud(cloud, cloud, transform);
-// 	pcl::toPCLPointCloud2(cloud, mesh1.cloud);
-
-
-// 	viewer_FinalResult.addTextureMesh(mesh1, "mesh_" + objFilePath, 0);
-
-// 	viewer_FinalResult.setBackgroundColor(0, 0, 0, 0);
-// 	viewer_FinalResult.spinOnce();
-// }
 
 void loadOBJ(string objFilePath, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_BreakLine, Eigen::Matrix4f& transform)
 {
@@ -2988,80 +2911,77 @@ void loadOBJ(string objFilePath, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_Break
 	viewer_FinalResult.spinOnce();
 }
 
+namespace fs = std::experimental::filesystem;
 
 int main()
 {
-	// 상수로 기본 경로들을 정의
-	const std::string BASE_PATH = "../Dataset"; // 현재 디렉토리
-	const std::string OUTPUT_PATH = "../Dataset"; // 출력 파일들이 저장될 경로
-	const std::string AXES_PATH = BASE_PATH + "/Axes"; // 축 정보 파일들이 있는 경로
-	const std::string SEGMENTS_PATH = "../Output/Segments"; // 세그먼트 파일들이 저장될 경로
+    const std::string BASE_PATH = "../Temp/Data";
+    const std::string AXES_PATH = BASE_PATH + "/Axes";
+    const std::string SEGMENTS_PATH = "../Temp/Temp_edge";
 
-	// 필요한 디렉토리들 생성
-	std::filesystem::create_directories(AXES_PATH);
-	std::filesystem::create_directories(OUTPUT_PATH);
-	std::filesystem::create_directories(SEGMENTS_PATH);
+    const std::string OUTPUT_SURFACES_FOLDER = "../Dataset/Surfaces/";
+    const std::string OUTPUT_BREAKLINES_FOLDER = "../Dataset/Breaklines/";
 
-	std::string surfacePointCloudFilePath = "";
-	std::string fragmentMeshFilePath = "";
+    fs::create_directories(AXES_PATH);
+    fs::create_directories(SEGMENTS_PATH);
+    fs::create_directories(datasetBreaklinesFolder);
+    fs::create_directories(datasetSurfacesFolder);
+    fs::create_directories(tempEdgeFolder);
 
-	Timer t;
-	Timer t_individual;
-	std::ofstream myfile(OUTPUT_PATH + "/breaklineExtractionTimes.txt", 
-						std::ofstream::out | std::ofstream::app);
-	std::string inputMeshFile = "";
+    Timer t;
+    Timer t_individual;
+    std::ofstream myfile(BASE_PATH + "/breaklineExtractionTimes.txt", std::ofstream::out | std::ofstream::app);
 
-	// 현재 작업 디렉토리를 기준으로 경로 설정
-	std::string path = BASE_PATH;
-	std::cout << "처리할 파일 경로: " << path << std::endl;
+    std::string searchPath = BASE_PATH;
+    std::cout << "처리할 파일 경로: " << searchPath << std::endl;
 
-	if (!myfile.is_open())
-	{
-		std::cerr << "breaklineExtractionTimes.txt\n";
-		return 1; 
-	}
+    if (!myfile.is_open())
+    {
+        std::cerr << "breaklineExtractionTimes.txt 파일을 열 수 없습니다.\n";
+        return 1;
+    }
 
-	try
-	{
-		for (const auto& entry : std::filesystem::recursive_directory_iterator(path))
-		{
-			if ((!std::filesystem::is_directory(entry.path())) && 
-				entry.path().extension().string() == ".obj") {
-				
-				std::filesystem::path filePath = entry.path();
-				std::string fileNameOnly = filePath.stem().string().substr(0, 14);
-				std::string cloudFile0 = fileNameOnly + "_Surface_0.xyz";
-				std::string cloudFile1 = fileNameOnly + "_Surface_1.xyz";
-				std::string outPath = OUTPUT_PATH + "/";
+    try
+    {
+        for (const auto& entry : fs::recursive_directory_iterator(searchPath))
+        {
+            if ((!fs::is_directory(entry.path())) && entry.path().extension().string() == ".obj")
+            {
+                fs::path filePath = entry.path();
+                std::string fileNameOnly = filePath.stem().string();
+                fileNameOnly = fileNameOnly.substr(0, 14);
+                std::string surfaceFile0 = fileNameOnly + "_Surface_0.xyz";
+                std::string surfaceFile1 = fileNameOnly + "_Surface_1.xyz";
 
-				std::cout << "Processing mesh file: " << entry.path() << std::endl;
-				std::cout << "Surface 0 point cloud file: " << outPath + cloudFile0 << std::endl;
-				std::cout << "Surface 1 point cloud file: " << outPath + cloudFile1 << std::endl;
+				const std::string inputSurfaceFolder = "../Temp/Data/";
+				const std::string outputSurfaceFolder = "../Dataset/Surfaces/";
+		
+				std::cout << "Surface 0 point cloud file: " << inputSurfaceFolder + surfaceFile0 << std::endl;
+				std::cout << "Surface 1 point cloud file: " << inputSurfaceFolder + surfaceFile1 << std::endl;
 
-				processFragmentData(outPath + cloudFile0, entry.path().string());
-				processFragmentData(outPath + cloudFile1, entry.path().string());
+				fs::copy_file(inputSurfaceFolder + surfaceFile0, outputSurfaceFolder + surfaceFile0, fs::copy_options::overwrite_existing);
+				fs::copy_file(inputSurfaceFolder + surfaceFile1, outputSurfaceFolder + surfaceFile1, fs::copy_options::overwrite_existing);
 
-				std::cout << "\nTime elapsed for " << fileNameOnly << ": " << t_individual.elapsed() << " seconds\n";
-				myfile << fileNameOnly << "\t" << t_individual.elapsed() << std::endl;
-				t_individual.reset();
-			}
-		}
+				processFragmentData(inputSurfaceFolder + surfaceFile0, entry.path().string());
+				processFragmentData(inputSurfaceFolder + surfaceFile1, entry.path().string());
 
-		std::cout << "Total time elapsed: " << t.elapsed() << " seconds\n";
-		myfile << "\nTotal time elapsed: " << t.elapsed() << " seconds\n";
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << "Error occurred: " << e.what() << std::endl;
-		std::cerr << "Total time elapsed until error: " << t.elapsed() << " seconds\n";
+                std::cout << "\nTime elapsed for " << fileNameOnly << ": " << t_individual.elapsed() << " seconds\n";
+                myfile << fileNameOnly << "\t" << t_individual.elapsed() << std::endl;
+                t_individual.reset();
+            }
+        }
+        std::cout << "Total time elapsed: " << t.elapsed() << " seconds\n";
+        myfile << "\nTotal time elapsed: " << t.elapsed() << " seconds\n";
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error occurred: " << e.what() << std::endl;
+        std::cerr << "Total time elapsed until error: " << t.elapsed() << " seconds\n";
+        myfile << "\nTotal time elapsed until error: " << t.elapsed() << " seconds\n";
+        myfile.close();
+        return -1;
+    }
 
-		myfile << "\nTotal time elapsed until error: " << t.elapsed() << " seconds\n";
-		myfile.close();
-		return -1;
-	}
-
-	myfile.close();
-
-	return 0;
+    myfile.close();
+    return 0;
 }
-

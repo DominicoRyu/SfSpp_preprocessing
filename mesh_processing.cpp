@@ -257,6 +257,10 @@ string pointFile = "";
 string outPath = "";
 string fileNameOnly = "";
 
+std::string dataPath_global;
+std::string intermediatePath_global;
+std::string datasetPath_global = "../Dataset/Point"; 
+
 #include <CGAL/Polygon_mesh_processing/corefinement.h>
 
 #include <CGAL/Polygon_mesh_processing/triangulate_hole.h>
@@ -317,9 +321,23 @@ void writeMatrix_to_XYZ(Eigen::MatrixXd& src, string fileName, int cols = 3)
 // 	outPath = filePath.parent_path().string() + "/";
 // }
 
-void setInputFile(std::string inputFile, std::string tempPath = "")
-{
-    cout << "\nSelected file: " + inputFile + "\n";
+// void setInputFile(std::string inputFile, std::string tempPath = "")
+// {
+//     cout << "\nSelected file: " + inputFile + "\n";
+//     meshFile = inputFile;
+//     std::experimental::filesystem::path filePath = { inputFile };
+//     fileNameOnly = filePath.stem().string().substr(0, 14);
+    
+//     if (!tempPath.empty()) {
+//         outPath = tempPath;
+//     } else {
+//         outPath = filePath.parent_path().string() + "/";
+//     }
+// }
+
+
+void setInputFile(std::string inputFile, std::string tempPath = "") {
+    std::cout << "\nSelected file: " + inputFile + "\n";
     meshFile = inputFile;
     std::experimental::filesystem::path filePath = { inputFile };
     fileNameOnly = filePath.stem().string().substr(0, 14);
@@ -1352,7 +1370,11 @@ void convertPLYtoXYZ(string inputFile, string outFile)
 
 void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbours, double smoothnessAngleThreshold, double curvatureThreshold)
 {
-    std::string tmp_path = filePath;
+    // std::string tmp_path = filePath;
+	std::string tmp_path = intermediatePath_global;
+	if (tmp_path.back() != '/' && tmp_path.back() != '\\') {
+		tmp_path += "/";
+	}
     int numberOfClustersCreated = -1;
     
     while (numberOfClustersCreated < 2)
@@ -1472,11 +1494,8 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
             }
 
             // normal vector check
-
-            // 노말 벡터 교차 여부 판단
             bool flipNormals = checkNormalsIntersection(largestClusterCloud, largestClusterNormals, secondLargestClusterCloud, secondLargestClusterNormals);
 
-            // 전체 클러스터의 노말 벡터 반전
             if (flipNormals)
             {
                 for (auto& normal : normals->points)
@@ -1485,16 +1504,12 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
                     normal.normal_y = -normal.normal_y;
                     normal.normal_z = -normal.normal_z;
                 }
-
-                // 노말 벡터가 반전되었음을 cloudWithNormals에 반영
                 for (size_t i = 0; i < cloudWithNormals->points.size(); i++)
                 {
                     cloudWithNormals->points[i].normal_x = normals->points[i].normal_x;
                     cloudWithNormals->points[i].normal_y = normals->points[i].normal_y;
                     cloudWithNormals->points[i].normal_z = normals->points[i].normal_z;
                 }
-
-                // 반전된 노말을 저장
                 pcl::io::savePLYFile(tmp_path + "_flipped_normal.ply", *cloudWithNormals);
             }
 
@@ -1517,9 +1532,6 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
             cloudWithNormals_Cluster2->width = cloudWithNormals_Cluster2->points.size();
             cloudWithNormals_Cluster2->height = 1;
 
-            // pcl::io::savePLYFile(tmp_path + "tmpSurfaceCluster_0.ply", *cloudWithNormals_Cluster1);
-            // pcl::io::savePLYFile(tmp_path + "tmpSurfaceCluster_1.ply", *cloudWithNormals_Cluster2);
-
             pcl::PointCloud<pcl::PointNormal>::Ptr improvedSurfacePoints_Cluster1(new pcl::PointCloud<pcl::PointNormal>);
             improveSurfaceBoundaryByFittingBSplineSurface(sampledPointCloudNormal, cloudWithNormals_Cluster1, improvedSurfacePoints_Cluster1);
             cloudWithNormals_Cluster1->points.clear();
@@ -1530,7 +1542,6 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
             cloudWithNormals_Cluster2->points.clear();
             pcl::copyPointCloud(*improvedSurfacePoints_Cluster2, *cloudWithNormals_Cluster2);
 
-            // 다시 flipNormals가 true인 경우 노말을 반전
             if (flipNormals)
             {
                 for (auto& normal : cloudWithNormals_Cluster1->points)
@@ -1562,16 +1573,6 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
                 tmp_path.erase(period_idx);
             }
 
-            pcl::io::savePLYFile(tmp_path + "tmpSurfaceCluster_0.ply", *cloudWithNormals_Cluster1);
-            pcl::io::savePLYFile(tmp_path + "tmpSurfaceCluster_1.ply", *cloudWithNormals_Cluster2);
-
-            uniformSampling(tmp_path + "tmpSurfaceCluster_0.ply", tmp_path + "_UniformSampled_0.ply");
-            uniformSampling(tmp_path + "tmpSurfaceCluster_1.ply", tmp_path + "_UniformSampled_1.ply");
-
-            // PLY 파일을 XYZ 파일로 변환하여 저장하는 코드 추가
-            //convertPLYtoXYZ(tmp_path + "_UniformSampled_0.ply", tmp_path + "_Surface_0.xyz");
-            //convertPLYtoXYZ(tmp_path + "_UniformSampled_1.ply", tmp_path + "_Surface_1.xyz");
-
             for (size_t t = 0; t < clusters.size(); t++)
             {
                 pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals_Cluster(new pcl::PointCloud<pcl::PointNormal>);
@@ -1581,7 +1582,6 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
                 }
                 cloudWithNormals_Cluster->width = cloudWithNormals_Cluster->points.size();
                 cloudWithNormals_Cluster->height = 1;
-                // pcl::io::savePLYFile("cluster_" + std::to_string(t) + "0.ply", *cloudWithNormals_Cluster);
             }
         }
         else if (clusters.size() == 1)
@@ -1606,7 +1606,6 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
                 tmp_path.erase(period_idx);
             }
 
-            // pcl::io::savePLYFile(tmp_path + "tmpSurfaceCluster_0.ply", *cloudWithNormals_Cluster1);
             break;
         }
 
@@ -1635,9 +1634,9 @@ void surfaceSegmentation(std::string filePath, int minCluster, int noOfNeighbour
         }
         points_unclustered->width = points_unclustered->points.size();
         points_unclustered->height = 1;
-        pcl::io::savePLYFile(outPath + fileNameOnly + "_unclustered.ply", *points_unclustered);
-        getBreakLineForDecorativeParts(outPath + fileNameOnly + "_unclustered.ply");
+		pcl::io::savePLYFile(dataPath_global + fileNameOnly + "_unclustered.ply", *points_unclustered);
 
+		getBreakLineForDecorativeParts(dataPath_global + fileNameOnly + "_unclustered.ply");
         numberOfClustersCreated = clusters.size();
     }
 }
@@ -1695,94 +1694,122 @@ void getClusters(string fileName)
 namespace fs = std::experimental::filesystem;
 
 int main(int argc, char** argv) {
-    std::string path = "../Dataset/Point"; 
-    std::string outputBasePath = "../Output/"; 
-    std::string tempPath = outputBasePath + "Temp/"; 
+    std::string baseOutputPath = "../Temp/";  
+    std::string dataPath = baseOutputPath + "Data/";  
+    std::string intermediatePath = baseOutputPath + "Temp/";  
+    std::string meshDatasetPath = "../Dataset/Mesh/";
     
-    if (!fs::exists(outputBasePath)) {
-        fs::create_directories(outputBasePath);
+    namespace fs = std::experimental::filesystem;
+    if (!fs::exists(dataPath)) {
+        fs::create_directories(dataPath);
     }
-    if (!fs::exists(tempPath)) {
-        fs::create_directories(tempPath);
+    if (!fs::exists(intermediatePath)) {
+        fs::create_directories(intermediatePath);
     }
+    
+    dataPath_global = dataPath;
+    intermediatePath_global = intermediatePath;
     
     Timer t;
     Timer t_individual;
-
+    
     std::vector<fs::path> pcd_files;
-    for (const auto& entry : fs::recursive_directory_iterator(path)) {
+    for (const auto& entry : fs::recursive_directory_iterator(datasetPath_global)) {
         if (!fs::is_directory(entry.path()) && entry.path().extension() == ".pcd") {
             pcd_files.push_back(entry.path());
         }
     }
     std::sort(pcd_files.begin(), pcd_files.end());
-
-    ofstream myfile(outputBasePath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
-
+    
+    ofstream myfile(baseOutputPath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
+    
     for (const auto& file_path : pcd_files) {
+        // Point 파일 처리
         std::string inputFilePath = file_path.string();
-        std::string fileNameOnly = file_path.stem().string().substr(0, 14);
         
-        std::string currentOutputDir = outputBasePath + fileNameOnly + "/";
-        if (!fs::exists(currentOutputDir)) {
-            fs::create_directories(currentOutputDir);
+        // 매칭되는 Mesh 파일 경로 생성
+        std::string baseName = file_path.stem().string();
+        baseName = baseName.substr(0, baseName.find("_Point")); // "_Point" 부분 제거
+        std::string meshFileName = baseName + "_Mesh.obj";
+        fs::path meshFilePath = fs::path(meshDatasetPath) / meshFileName;
+        
+        // Point 파일과 Mesh 파일을 Data 폴더로 복사
+        fs::path destPointFile = fs::path(dataPath) / file_path.filename();
+        fs::path destMeshFile = fs::path(dataPath) / meshFileName;
+        
+        try {
+            if (fs::exists(file_path)) {
+                fs::copy_file(file_path, destPointFile, fs::copy_options::overwrite_existing);
+                std::cout << "Copied Point file: " << file_path.filename().string() << std::endl;
+            }
+            
+            if (fs::exists(meshFilePath)) {
+                fs::copy_file(meshFilePath, destMeshFile, fs::copy_options::overwrite_existing);
+                std::cout << "Copied Mesh file: " << meshFileName << std::endl;
+            } else {
+                std::cout << "Warning: Mesh file not found: " << meshFilePath.string() << std::endl;
+            }
+        } catch (const fs::filesystem_error& e) {
+            std::cout << "Error copying files: " << e.what() << std::endl;
+            continue;
         }
-
+        
+        setInputFile(inputFilePath, dataPath); 
+        std::string downsampledFilePath = downsamplePointCloud(inputFilePath);
+        
         std::cout << "Starting processing on: " << inputFilePath << std::endl;
         
-        setInputFile(inputFilePath, tempPath);
-        std::string downsampledFilePath = downsamplePointCloud(inputFilePath);
-
-        myfile.open(outputBasePath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
+        myfile.open(baseOutputPath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
         if (myfile.is_open()) {
             myfile << fileNameOnly << "\t" << t_individual.elapsed() << "\t";
             myfile.close();
         }
         t_individual.reset();
-
+        
         int minCluster = 50, noOfNeighbours = 10;
         double smoothnessAngleThreshold = 4.5, curvatureThreshold = 1.5;
         std::cout << "Starting surface segmentation on: " << downsampledFilePath << std::endl;
         surfaceSegmentation(downsampledFilePath, minCluster, noOfNeighbours, smoothnessAngleThreshold, curvatureThreshold);
 
-        std::string tempFileName0 = tempPath + fileNameOnly + "_SampledWithNormals.plytmpSurfaceCluster_Improved_0.ply";
-        std::string tempFileName1 = tempPath + fileNameOnly + "_SampledWithNormals.plytmpSurfaceCluster_Improved_1.ply";
-
-        std::string outputFileName0 = currentOutputDir + fileNameOnly + "_Surface_0.ply";
-        std::string outputFileName1 = currentOutputDir + fileNameOnly + "_Surface_1.ply";
-
+		std::string tempFileName0 = intermediatePath + "tmpSurfaceCluster_Improved_0.ply";
+		std::string tempFileName1 = intermediatePath + "tmpSurfaceCluster_Improved_1.ply";
+        
+        // 최종 결과 파일은 dataPath에 저장
+        std::string outputFileName0 = dataPath + fileNameOnly + "_Surface_0.ply";
+        std::string outputFileName1 = dataPath + fileNameOnly + "_Surface_1.ply";
+        
         std::cout << "Ply to XYZ start" << std::endl;
-
+        
         if (fs::exists(tempFileName0)) {
             fs::copy_file(tempFileName0, outputFileName0, fs::copy_options::overwrite_existing);
-            convertPLYtoXYZ(outputFileName0, currentOutputDir + fileNameOnly + "_Surface_0.xyz");
+            convertPLYtoXYZ(outputFileName0, dataPath + fileNameOnly + "_Surface_0.xyz");
         } else {
             std::cout << "Warning: Source file not found: " << tempFileName0 << std::endl;
         }
-
+        
         if (fs::exists(tempFileName1)) {
             fs::copy_file(tempFileName1, outputFileName1, fs::copy_options::overwrite_existing);
-            convertPLYtoXYZ(outputFileName1, currentOutputDir + fileNameOnly + "_Surface_1.xyz");
+            convertPLYtoXYZ(outputFileName1, dataPath + fileNameOnly + "_Surface_1.xyz");
         } else {
             std::cout << "Warning: Source file not found: " << tempFileName1 << std::endl;
         }
-
-        myfile.open(outputBasePath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
+        
+        myfile.open(baseOutputPath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
         if (myfile.is_open()) {
-            cout << "\nTime after processing: " << t_individual.elapsed() << " seconds" << endl;
-            myfile << t_individual.elapsed() << endl;
+            std::cout << "\nTime after processing: " << t_individual.elapsed() << " seconds" << std::endl;
+            myfile << t_individual.elapsed() << std::endl;
             myfile.close();
         }
         t_individual.reset();
     }
-
-    myfile.open(outputBasePath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
+    
+    myfile.open(baseOutputPath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
     if (myfile.is_open()) {
         myfile << "\nTotal time elapsed: " << t.elapsed() << " seconds\n";
         myfile.close();
     }
-
+    
     std::cout << "Total time elapsed: " << t.elapsed() << " seconds" << std::endl;
-
+    
     return EXIT_SUCCESS;
 }
