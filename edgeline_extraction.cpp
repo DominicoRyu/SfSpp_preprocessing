@@ -254,7 +254,7 @@ string currentMeshFile = "";
 const std::string datasetBreaklinesFolder = getBreaklineDatasetPath(potID);
 const std::string datasetSurfacesFolder   = getSurfaceDatasetPath(potID);
 
-const std::string tempEdgeFolder          = tempIntermediatePath(potID) + "Temp_edge/";
+const std::string tempEdgeFolder          = tempEdgePath(potID);
 const std::string datasetPath_global      = tempDataPath(potID);
 const std::string axesFolder = "../Dataset/Axes/";
 
@@ -850,6 +850,7 @@ void fitBSplineSurfaceAndGetNormalsOnProjectedPoints(string pointCloudDataFile, 
 	viewer.addPolygonMesh(mesh, mesh_id);
 
 	// surface refinement
+	std::cout << "Surface refinement" << std::endl;
 	for (unsigned i = 0; i < refinement; i++)
 	{
 		fit.refine(0);
@@ -862,6 +863,7 @@ void fitBSplineSurfaceAndGetNormalsOnProjectedPoints(string pointCloudDataFile, 
 	}
 
 	// surface fitting with final refinement level
+	std::cout << "Surface fitting with final refinement level" << std::endl;
 	for (unsigned i = 0; i < iterations; i++)
 	{
 		fit.assemble(params);
@@ -873,6 +875,7 @@ void fitBSplineSurfaceAndGetNormalsOnProjectedPoints(string pointCloudDataFile, 
 	viewer.close();
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_EvaluatedPointsOnSurface(new pcl::PointCloud<pcl::PointNormal>);
+	std::cout << "Evaluating points on surface" << std::endl;
 	for (size_t i = 0; i < sampledBreaklinePointCloud->points.size(); i++)
 	{
 		Eigen::Vector3d originalPt(sampledBreaklinePointCloud->points[i].x, sampledBreaklinePointCloud->points[i].y, sampledBreaklinePointCloud->points[i].z);
@@ -2916,12 +2919,9 @@ namespace fs = std::experimental::filesystem;
 
 int main()
 {
-    const std::string BASE_PATH = tempDataPath(potID);
+    const std::string BASE_PATH = tempPath();
     const std::string AXES_PATH = BASE_PATH + "/Axes";
-    const std::string SEGMENTS_PATH = tempIntermediatePath(potID) + "Temp_edge";
-
-    const std::string OUTPUT_SURFACES_FOLDER = getSurfaceDatasetPath(potID);
-    const std::string OUTPUT_BREAKLINES_FOLDER = getBreaklineDatasetPath(potID);
+    const std::string SEGMENTS_PATH = tempEdgePath(potID);
 
     fs::create_directories(AXES_PATH);
     fs::create_directories(SEGMENTS_PATH);
@@ -2934,51 +2934,62 @@ int main()
     std::ofstream myfile(BASE_PATH + "/breaklineExtractionTimes.txt", std::ofstream::out | std::ofstream::app);
 
     std::string searchPath = BASE_PATH;
-    std::cout << "처리할 파일 경로: " << searchPath << std::endl;
+    std::cout << "Processing directory: " << searchPath << std::endl;
 
-    if (!myfile.is_open())
-    {
-        std::cerr << "breaklineExtractionTimes.txt 파일을 열 수 없습니다.\n";
+    if (!myfile.is_open()) {
+        std::cerr << "Could not open breaklineExtractionTimes.txt\n";
         return 1;
     }
 
-    try
-    {
-        for (const auto& entry : fs::recursive_directory_iterator(searchPath))
-        {
-            if ((!fs::is_directory(entry.path())) && entry.path().extension().string() == ".obj")
-            {
-                fs::path filePath = entry.path();
-                std::string fileNameOnly = filePath.stem().string();
-                fileNameOnly = fileNameOnly.substr(0, 14);
-                std::string surfaceFile0 = fileNameOnly + "_Surface_0.xyz";
-                std::string surfaceFile1 = fileNameOnly + "_Surface_1.xyz";
-
-				const std::string inputSurfaceFolder = tempDataPath(potID);
-				const std::string outputSurfaceFolder = getSurfaceDatasetPath(potID);
-		
-				std::cout << "Surface 0 point cloud file: " << inputSurfaceFolder + surfaceFile0 << std::endl;
-				std::cout << "Surface 1 point cloud file: " << inputSurfaceFolder + surfaceFile1 << std::endl;
-
-				fs::copy_file(inputSurfaceFolder + surfaceFile0, outputSurfaceFolder + surfaceFile0, fs::copy_options::overwrite_existing);
-				fs::copy_file(inputSurfaceFolder + surfaceFile1, outputSurfaceFolder + surfaceFile1, fs::copy_options::overwrite_existing);
-
-				processFragmentData(inputSurfaceFolder + surfaceFile0, entry.path().string());
-				processFragmentData(inputSurfaceFolder + surfaceFile1, entry.path().string());
-
-                std::cout << "\nTime elapsed for " << fileNameOnly << ": " << t_individual.elapsed() << " seconds\n";
-                myfile << fileNameOnly << "\t" << t_individual.elapsed() << std::endl;
-                t_individual.reset();
+    try {
+        // Collect and sort file paths
+        std::vector<fs::path> objFiles;
+        for (const auto& entry : fs::recursive_directory_iterator(searchPath)) {
+            if ((!fs::is_directory(entry.path())) && entry.path().extension() == ".obj") {
+                objFiles.push_back(entry.path());
             }
         }
-        std::cout << "Total time elapsed: " << t.elapsed() << " seconds\n";
-        myfile << "\nTotal time elapsed: " << t.elapsed() << " seconds\n";
+        
+        // Sort by filename
+        std::sort(objFiles.begin(), objFiles.end(), [](const fs::path& a, const fs::path& b) {
+            return a.stem().string() < b.stem().string();
+        });
+
+        // Process files in sorted order
+        for (const auto& objPath : objFiles) {
+            std::string fileNameOnly = objPath.stem().string();
+            fileNameOnly = fileNameOnly.substr(0, 14);
+            std::string surfaceFile0 = fileNameOnly + "_Surface_0.xyz";
+            std::string surfaceFile1 = fileNameOnly + "_Surface_1.xyz";
+
+            const std::string inputSurfaceFolder = tempDataPath(potID);
+            const std::string outputSurfaceFolder = getSurfaceDatasetPath(potID);
+    
+            std::cout << "Surface 0 point cloud file: " << inputSurfaceFolder + surfaceFile0 << std::endl;
+            std::cout << "Surface 1 point cloud file: " << inputSurfaceFolder + surfaceFile1 << std::endl;
+
+            fs::copy_file(inputSurfaceFolder + surfaceFile0, 
+                         outputSurfaceFolder + surfaceFile0, 
+                         fs::copy_options::overwrite_existing);
+            fs::copy_file(inputSurfaceFolder + surfaceFile1, 
+                         outputSurfaceFolder + surfaceFile1, 
+                         fs::copy_options::overwrite_existing);
+
+            processFragmentData(inputSurfaceFolder + surfaceFile0, objPath.string());
+            processFragmentData(inputSurfaceFolder + surfaceFile1, objPath.string());
+
+            std::cout << "\nProcessing time for " << fileNameOnly << ": " << t_individual.elapsed() << " seconds\n";
+            myfile << fileNameOnly << "\t" << t_individual.elapsed() << std::endl;
+            t_individual.reset();
+        }
+        
+        std::cout << "Total processing time: " << t.elapsed() << " seconds\n";
+        myfile << "\nTotal processing time: " << t.elapsed() << " seconds\n";
     }
-    catch (const std::exception& e)
-    {
+    catch (const std::exception& e) {
         std::cerr << "Error occurred: " << e.what() << std::endl;
-        std::cerr << "Total time elapsed until error: " << t.elapsed() << " seconds\n";
-        myfile << "\nTotal time elapsed until error: " << t.elapsed() << " seconds\n";
+        std::cerr << "Time until error: " << t.elapsed() << " seconds\n";
+        myfile << "\nTime until error: " << t.elapsed() << " seconds\n";
         myfile.close();
         return -1;
     }

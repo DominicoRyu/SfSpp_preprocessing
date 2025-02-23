@@ -847,7 +847,6 @@ void improveSurfaceBoundaryByFittingBSplineSurface(pcl::PointCloud<PointNormal>:
 
 		improvedSurfacePointCloudNoDuplicates->width = improvedSurfacePointCloudNoDuplicates->points.size();
 		improvedSurfacePointCloudNoDuplicates->height = 1;
-		// pcl::io::savePCDFile("improvedSurfacePointCloud.pcd", *improvedSurfacePointCloudNoDuplicates);
 	}
 
 	projectedPointCloudWithNormals->width = static_cast<int>(projectedPointCloudWithNormals->points.size());
@@ -911,12 +910,8 @@ void getBreakLineForDecorativeParts(string fileName)
 		boundaryCloud->height = 1;
 		boundaryCloud->is_dense = true;
 
-		// pcl::io::savePCDFile("boundary.pcd", *boundaryCloud);
-		// pcl::io::loadPCDFile("boundary.pcd", *boundaryCloud);
-		//pcl::copyPointCloud(*boundaryCloud, *cloud_BorderPointsCombined);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_sequenced(new pcl::PointCloud<pcl::PointXYZ>);
 		getPointsInSequence(boundaryCloud, cloud_sequenced);
-		// pcl::io::savePLYFile(fileName + "_cluster" + to_string(t) + "_breakLine.ply", *cloud_sequenced);
 	}
 }
 
@@ -1225,8 +1220,7 @@ void mergeClusters(pcl::PointCloud<pcl::PointNormal>::Ptr cloud, std::vector<pcl
 			Eigen::Vector3f lineDirection1 = calculatePrincipalAxis(cloud, boundaryPoints1);
 			Eigen::Vector3f lineDirection2 = calculatePrincipalAxis(cloud, boundaryPoints2);
 
-			// float minDistance = 0.05; // 임의의 거리 값
-			float minDistance = 2.5; // 임의의 거리 값
+			float minDistance = 2.5; 
 
 			// Declare innerPoint1 and innerPoint2 before use
 			int innerPoint1 = selectInnerPointAlongLine(cloud, clusters[i], boundaryPoint1, lineDirection1, minDistance * 100);
@@ -1636,14 +1630,13 @@ void getClusters(string fileName)
 	pcl::PCDWriter writer;
 	pcl::io::loadPLYFile(fileName, *missedPoints);
 
-	// Creating the KdTree object for the search method of the extraction
 	pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>);
 	tree->setInputCloud(missedPoints);
 
 	std::vector<pcl::PointIndices> cluster_indices;
 	pcl::EuclideanClusterExtraction<pcl::PointNormal> ec;
-	ec.setClusterTolerance(3); // 2cm
-	ec.setMinClusterSize(100); // 100);
+	ec.setClusterTolerance(3); 
+	ec.setMinClusterSize(100); 
 	ec.setMaxClusterSize(25000);
 	ec.setSearchMethod(tree);
 	ec.setInputCloud(missedPoints);

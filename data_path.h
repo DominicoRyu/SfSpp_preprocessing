@@ -60,6 +60,10 @@ inline std::string tempPath() {
     return "../Temp/";
 }
 
+inline std::string tempEdgePath(const std::string& potID) {
+    return "../Temp/Temp_edge/Pot_" + potID + "/";
+}
+
 inline std::string tempDataPath(const std::string& potID) {
     return "../Temp/Data/Pot_" + potID + "/";
 }

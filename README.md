@@ -22,7 +22,7 @@ Pottery fragments (3D scans in `.obj` format) are turned into processed point cl
 
 1. Build the Docker image:
    ```bash
-   docker build -t sfs-preprocess:latest
+   docker build -t sfs_pre:latest .
    ```
 2. Download Dataset
    ```
@@ -38,12 +38,13 @@ Pottery fragments (3D scans in `.obj` format) are turned into processed point cl
     ## Command at container ##
     mkdir build
     cd build
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release 
+    cmake .. -DCMAKE_BUILD_TYPE=Release 
 
     make
    ```
 5. Run the program
+
+> **Notice**: The code for axis estimation is currently being refactored and will be released soon. Stay tuned for updates!
 
 ## Pre-processing Pipeline (Mesh2Surface)
 
