@@ -159,7 +159,6 @@ typedef pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> ColorHan
 typedef search::KdTree<PointXYZ>::Ptr KdTreePtr;
 
 
-
 // Typess
 // Point with normal vector stored in a std::pair.
 typedef std::pair<PointCGAL, VectorCGAL> PointVectorPair;
@@ -246,15 +245,17 @@ namespace fs = std::experimental::filesystem;
 
 typedef Matrix<double, 3, 1> Vector3d;
 
+#include "data_path.h"
+
 string currentFileName = "";
 string currentMeshFile = "";
 
 // 최종 결과 저장 경로
-const std::string datasetBreaklinesFolder = "../Dataset/Breaklines/";
-const std::string datasetSurfacesFolder   = "../Dataset/Surfaces/";
+const std::string datasetBreaklinesFolder = getBreaklineDatasetPath(potID);
+const std::string datasetSurfacesFolder   = getSurfaceDatasetPath(potID);
 
-const std::string tempEdgeFolder          = "../Temp/Temp_edge/";
-const std::string datasetPath_global      = "../Temp/Data";
+const std::string tempEdgeFolder          = tempIntermediatePath(potID) + "Temp_edge/";
+const std::string datasetPath_global      = tempDataPath(potID);
 const std::string axesFolder = "../Dataset/Axes/";
 
 Eigen::Vector3f avgNormalDirection;
@@ -681,7 +682,7 @@ void getInitialBoundary_UsingPCL_BoundaryAlgo(pcl::PointCloud<pcl::PointNormal>:
 	std::experimental::filesystem::path filePathNew = { currentMeshFile };
 	string fileNameOnly = filePathNew.stem().string().substr(0,14);
 	// string outPathNew = filePathNew.parent_path().string() + "\\";
-	string outPathNew = "../Temp/Data/";
+	string outPathNew = tempDataPath(potID);
 	
 	pcl::io::loadPLYFile(outPathNew + fileNameOnly + "_unclustered.ply", *unclusteredPoints);
 	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
@@ -2715,7 +2716,7 @@ void processFragmentData(string surfacePointCloudFilePath, string fragmentMeshFi
         std::experimental::filesystem::path filePathTemp = { fragmentMeshFilePath };
         string fileNameOnly = filePathTemp.stem().string().substr(0, 14);
         // 임시 outPath는 "../Dataset/"로 지정 (향후 Surfaces 폴더 등으로 옮길 수 있음)
-        string outPath = "../Temp/Data/";
+        string outPath = tempDataPath(potID);	
         bool isRim = isBreaklineSegARim(cloud_breakLineSeg, outPath + fileNameOnly + "_SampledWithNormals.ply", segCount);
         if (axisInfoAvailable)
         {
@@ -2817,7 +2818,7 @@ void processFragmentData(string surfacePointCloudFilePath, string fragmentMeshFi
         cloud_breakLineSeg->height = 1;
         std::experimental::filesystem::path filePathTemp = { fragmentMeshFilePath };
         string fileNameOnly = filePathTemp.stem().string().substr(0, 14);
-        string outPathTemp = "../Temp/Data/";
+        string outPathTemp = tempDataPath(potID);
         bool isRim = isBreaklineSegARim(cloud_breakLineSeg, outPathTemp + fileNameOnly + "_SampledWithNormals.ply", segCount);
         index.push_back(to_string(segStartIndex) + " " + to_string(totalPtsCounter) + " " + (isRim ? "1" : "0"));
         segStartIndex = totalPtsCounter + 1;
@@ -2915,12 +2916,12 @@ namespace fs = std::experimental::filesystem;
 
 int main()
 {
-    const std::string BASE_PATH = "../Temp/Data";
+    const std::string BASE_PATH = tempDataPath(potID);
     const std::string AXES_PATH = BASE_PATH + "/Axes";
-    const std::string SEGMENTS_PATH = "../Temp/Temp_edge";
+    const std::string SEGMENTS_PATH = tempIntermediatePath(potID) + "Temp_edge";
 
-    const std::string OUTPUT_SURFACES_FOLDER = "../Dataset/Surfaces/";
-    const std::string OUTPUT_BREAKLINES_FOLDER = "../Dataset/Breaklines/";
+    const std::string OUTPUT_SURFACES_FOLDER = getSurfaceDatasetPath(potID);
+    const std::string OUTPUT_BREAKLINES_FOLDER = getBreaklineDatasetPath(potID);
 
     fs::create_directories(AXES_PATH);
     fs::create_directories(SEGMENTS_PATH);
@@ -2953,8 +2954,8 @@ int main()
                 std::string surfaceFile0 = fileNameOnly + "_Surface_0.xyz";
                 std::string surfaceFile1 = fileNameOnly + "_Surface_1.xyz";
 
-				const std::string inputSurfaceFolder = "../Temp/Data/";
-				const std::string outputSurfaceFolder = "../Dataset/Surfaces/";
+				const std::string inputSurfaceFolder = tempDataPath(potID);
+				const std::string outputSurfaceFolder = getSurfaceDatasetPath(potID);
 		
 				std::cout << "Surface 0 point cloud file: " << inputSurfaceFolder + surfaceFile0 << std::endl;
 				std::cout << "Surface 1 point cloud file: " << inputSurfaceFolder + surfaceFile1 << std::endl;

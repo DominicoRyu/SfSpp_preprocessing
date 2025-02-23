@@ -5,12 +5,12 @@ mkdir -p Dataset/mesh Dataset/point
 cd Dataset
 
 # Mesh 데이터 다운로드 및 정리
-gdown 1org3At8iT-t3fB3CTgdvQsZ_fO6RwYE1 -O Mesh.zip
+gdown 1m7VEDaX6bdyOjGoD6JmK4bwoxSQ-EeKl -O Mesh.zip
 unzip Mesh.zip -d Mesh
 rm -rf __MACOSX
 
 # Point 데이터 다운로드 및 정리
-gdown 1C03oiRGsIiFE1-jUWDZypjdqo0fDvwqS -O Point.zip
+gdown 1bBuqBIFnOQug9O0aYTkYbDwzIAaGMTsx -O Point.zip
 unzip Point.zip -d Point
 rm -rf __MACOSX
 

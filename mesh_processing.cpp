@@ -251,6 +251,7 @@ public:
 	}
 };
 
+#include "data_path.h"
 string meshFile = "";
 string pointFile = "";
 
@@ -259,7 +260,7 @@ string fileNameOnly = "";
 
 std::string dataPath_global;
 std::string intermediatePath_global;
-std::string datasetPath_global = "../Dataset/Point"; 
+std::string datasetPath_global = getPointDatasetPath(potID); 
 
 #include <CGAL/Polygon_mesh_processing/corefinement.h>
 
@@ -310,31 +311,6 @@ void writeMatrix_to_XYZ(Eigen::MatrixXd& src, string fileName, int cols = 3)
 		cout << "Error opening file" << endl;
 	}
 }
-
-
-// void setInputFile(std::string inputFile)
-// {
-// 	cout << "\nSelected file: " + inputFile + "\n";
-// 	meshFile = inputFile;
-// 	std::experimental::filesystem::path filePath = { inputFile };
-// 	fileNameOnly = filePath.stem().string().substr(0, 14);
-// 	outPath = filePath.parent_path().string() + "/";
-// }
-
-// void setInputFile(std::string inputFile, std::string tempPath = "")
-// {
-//     cout << "\nSelected file: " + inputFile + "\n";
-//     meshFile = inputFile;
-//     std::experimental::filesystem::path filePath = { inputFile };
-//     fileNameOnly = filePath.stem().string().substr(0, 14);
-    
-//     if (!tempPath.empty()) {
-//         outPath = tempPath;
-//     } else {
-//         outPath = filePath.parent_path().string() + "/";
-//     }
-// }
-
 
 void setInputFile(std::string inputFile, std::string tempPath = "") {
     std::cout << "\nSelected file: " + inputFile + "\n";
@@ -1694,10 +1670,10 @@ void getClusters(string fileName)
 namespace fs = std::experimental::filesystem;
 
 int main(int argc, char** argv) {
-    std::string baseOutputPath = "../Temp/";  
-    std::string dataPath = baseOutputPath + "Data/";  
-    std::string intermediatePath = baseOutputPath + "Temp/";  
-    std::string meshDatasetPath = "../Dataset/Mesh/";
+    std::string baseOutputPath = tempPath();  
+    std::string dataPath = tempDataPath(potID);  
+    std::string intermediatePath = tempIntermediatePath(potID);  
+    std::string meshDatasetPath = getMeshDatasetPath(potID);
     
     namespace fs = std::experimental::filesystem;
     if (!fs::exists(dataPath)) {
@@ -1724,16 +1700,13 @@ int main(int argc, char** argv) {
     ofstream myfile(baseOutputPath + "segmentationTimes.txt", std::ofstream::out | std::ofstream::app);
     
     for (const auto& file_path : pcd_files) {
-        // Point 파일 처리
         std::string inputFilePath = file_path.string();
         
-        // 매칭되는 Mesh 파일 경로 생성
         std::string baseName = file_path.stem().string();
-        baseName = baseName.substr(0, baseName.find("_Point")); // "_Point" 부분 제거
+        baseName = baseName.substr(0, baseName.find("_Point")); 
         std::string meshFileName = baseName + "_Mesh.obj";
         fs::path meshFilePath = fs::path(meshDatasetPath) / meshFileName;
         
-        // Point 파일과 Mesh 파일을 Data 폴더로 복사
         fs::path destPointFile = fs::path(dataPath) / file_path.filename();
         fs::path destMeshFile = fs::path(dataPath) / meshFileName;
         
@@ -1774,7 +1747,6 @@ int main(int argc, char** argv) {
 		std::string tempFileName0 = intermediatePath + "tmpSurfaceCluster_Improved_0.ply";
 		std::string tempFileName1 = intermediatePath + "tmpSurfaceCluster_Improved_1.ply";
         
-        // 최종 결과 파일은 dataPath에 저장
         std::string outputFileName0 = dataPath + fileNameOnly + "_Surface_0.ply";
         std::string outputFileName1 = dataPath + fileNameOnly + "_Surface_1.ply";
         

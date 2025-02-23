@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # DISPLAY 환경 변수 설정
-export DISPLAY=192.168.1.5:0
+export DISPLAY=172.18.224.1:0
 
 # xhost 설정
-xhost + 192.168.1.5
+xhost + 172.18.224.1
 
 # Docker 컨테이너 실행
 docker run \
