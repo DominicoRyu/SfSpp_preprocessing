@@ -5,6 +5,28 @@ This repository contains the **pre-processing** code for the Structure-from-Sher
 1. **Mesh-to-Surface**  
 2. **Breakline Extraction**
 
+# Dataset
+
+Total 10 different potteries with 142 fragments. Scanned from real-broken sherds (not in the real-scale)
+
+![Dataset Overview](alglib/Dataset.png)
+
+Dataset structure:
+```
+Dataset/
+├── Mesh/
+│   ├── Pot_A/
+│   ├── Pot_B/
+│   ├── ...
+│   └── Pot_J/
+└── Point/
+    ├── Pot_A/
+    ├── Pot_B/
+    ├── ...
+    └── Pot_J/
+```
+
+Each folder contains the data for the corresponding pottery fragment.
 
 ## Overview
 Pottery fragments (3D scans in `.obj` format) are turned into processed point clouds with relevant surface information and geometric features that aid in the reconstruction process.
