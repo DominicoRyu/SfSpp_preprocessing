@@ -66,7 +66,28 @@ Pottery fragments (3D scans in `.obj` format) are turned into processed point cl
    ```
 5. Run the program
 
-> **Notice**: The code for axis estimation is currently being refactored and will be released soon. Stay tuned for updates!
+## Running the Pre-processing Pipeline
+
+### Step-by-Step Execution Order
+
+1. **Mesh-to-Surface Processing**
+   ```bash
+   # Inside the build directory
+   ./Meshprocessing
+   ```
+   This will generate:
+   - `*_SampledWithNormals.ply`: Point cloud with normals
+   - `*_Surface_X.ply/xyz`: Segmented surfaces
+
+2. **Surface-to-Breakline Processing**
+   ```bash
+   # After generating surface files
+   ./EdgeLineExtraction
+   ```
+   This will generate:
+   - `*_CompleteBreaklines.xyz`: Final breakline output
+
+
 
 ## Pre-processing Pipeline (Mesh2Surface)
 
@@ -155,7 +176,7 @@ After finishing **Mesh2Surface** steps (generating `*_Surface_X.xyz`), we run th
 
 
 ## License
-[Add your license information here]
+SfS++ is licensed under the CC-BY-NC-SA-4.0 license limiting any commercial use.
 
 ## Citation
 If you use this code in your research, please cite:
