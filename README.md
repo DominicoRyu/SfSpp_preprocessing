@@ -186,7 +186,7 @@ SfS++ is licensed under the CC-BY-NC-SA-4.0 license limiting any commercial use.
 ## Citation
 If you use this code in your research, please cite:
 ```
-@inproceedings{YooandLiu2024SfS,
+@inproceedings{YooandLiu2025SfS,
     title={Structure-from-Sherds++: Robust Incremental 3D Reassembly of Axially Symmetric Pots from Unordered and Mixed Fragment Collections},
     author={Yoo, Seong Jong and Liu, Sisung and Arshad, Muhammad Zeeshan and Kim, Jinhyeok and Kim, Young Min and Aloimonos, Yiannis and Fermuller, Cornelia and Joo, Kyungdon and Kim, Jinwook and Hong, Je Hyeong},
     journal={arXiv preprint arXiv:2502.13986},
