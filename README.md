@@ -4,6 +4,7 @@ This repository contains the **pre-processing** code for the Structure-from-Sher
 
 1. **Mesh-to-Surface**  
 2. **Breakline Extraction**
+3. **Axis Extraction**
 
 # Dataset
 
@@ -37,6 +38,8 @@ Pottery fragments (3D scans in `.obj` format) are turned into processed point cl
 - CGAL: 5.0
   - Used for mesh processing and surface operations
 - C++ 17 or higher
+
+- MatLab (for Axis Extraction)
 
 ## Building the Project
 
@@ -87,46 +90,31 @@ Pottery fragments (3D scans in `.obj` format) are turned into processed point cl
    This will generate:
    - `*_CompleteBreaklines.xyz`: Final breakline output
 
-
+3. **Axis Extraction**
+   ```bash
+   # Using MATLAB
+   # 1. Open preprocess_new_pots.m in MATLAB
+   # 2. Edit the root_path variable to point to your data directory
+   # 3. Run the script
+   ```
 
 ## Pre-processing Pipeline (Mesh2Surface)
 
-### 1. Mesh to Point Cloud Conversion
-- Input: Raw 3D mesh files (.obj format)
-- Process: 
-  - Converts mesh to point cloud using CloudCompare
-  - Samples up to 1,000,000 points per mesh
-  - Initial noise filtering
-- Output: PCD format point cloud
+Mesh2Surface processing converts raw 3D mesh files into processed point clouds for surface analysis and segmentation.
 
-### 2. Surface Processing
-- Normal Estimation and Orientation
-  - Computes surface normals for each point
-  - Automatically corrects normal vector orientations
-  - Uses PCA-based normal estimation with k-nearest neighbors
+1. **Mesh to Point Cloud Conversion**  
+   - Samples original `.obj` files using CloudCompare (up to 1,000,000 points)  
+   - Applies initial noise filtering  
+   - Output: PCD format point cloud
 
-- Uniform Sampling
-  - Reduces point cloud density while maintaining surface features
-  - Removes noise and outliers
-  - Configurable sampling radius
+2. **Surface Processing**  
+   - **Normal Estimation & Orientation**: PCA-based normal estimation with k-nearest neighbors  
+   - **Uniform Sampling**: Reduces point density while preserving surface features  
+   - **Surface Segmentation**: Region growing based on normal similarity, curvature, and proximity  
 
-- Surface Segmentation
-  - Region growing-based segmentation
-  - Separates different surface regions based on:
-    - Normal vector similarity
-    - Surface curvature
-    - Spatial proximity
-
-### 3. Surface Analysis and Refinement
-- B-Spline Surface Fitting
-  - Improves surface boundary definition
-  - Reduces noise in surface representation
-  - Maintains geometric features
-
-- Cluster Analysis
-  - Identifies and separates distinct surface regions
-  - Merges related segments based on geometric criteria
-  - Handles special cases (decorative parts, damage)
+3. **Surface Analysis & Refinement**  
+   - **B-Spline Surface Fitting**: Improves boundary definition and reduces noise  
+   - **Cluster Analysis**: Merges related segments and handles special cases  
 
 ## Pre-processing Pipeline (Surface2Breakline)
 
@@ -146,6 +134,23 @@ After finishing **Mesh2Surface** steps (generating `*_Surface_X.xyz`), we run th
 
 4. **Output**  
    - **Final breaklines** (`*_CompleteBreaklines.xyz` or `.pcd`) – **primary** output 
+
+## Pre-processing Pipeline (AxisExtraction)
+The axis extraction process is based on the PotSAC algorithm described in [Hong et al., 2019](https://openaccess.thecvf.com/content_ICCVW_2019/papers/EH/Hong_PotSAC_A_Robust_Axis_Estimator_for_Axially_Symmetric_Pot_Fragments_ICCVW_2019_paper.pdf). This method provides a robust way to estimate the rotational axis of axially symmetric pottery fragments.
+
+1. **Surface Normal Analysis**
+   - Computes the cross product of surface normals to generate axis candidates
+   - Uses MLESAC-based filtering to identify consistent axis directions
+
+2. **Axis Refinement**
+   - Applies weighted optimization to refine the initial axis estimate
+   - Minimizes the distance between the axis and normal-derived lines
+
+3. **Execution in MATLAB**
+   - The implementation is provided in MATLAB scripts
+   - Main script: `preprocess_new_pots.m` handles the complete axis extraction workflow
+
+
 
 ## Configuration Parameters
 
@@ -182,18 +187,28 @@ SfS++ is licensed under the CC-BY-NC-SA-4.0 license limiting any commercial use.
 If you use this code in your research, please cite:
 ```
 @inproceedings{YooandLiu2024SfS,
-	author    = {Yoo, Seong Jong and Liu, Sisung and Arshad, Muhammad Zeeshan and Kim, Jinhyeok and Kim, Young Min and Aloimonos, Yiannis and Fermüller, Cornelia and Joo, Kyungdon and Kim, Jinwook and Hong, Je Hyeong},
-	title     = {Structure-From-Sherds++: Robust Incremental 3D Reassembly of Axially Symmetric Pots from Unordered and Mixed Fragment Collections},
-	year      = {2024},
+    title={Structure-from-Sherds++: Robust Incremental 3D Reassembly of Axially Symmetric Pots from Unordered and Mixed Fragment Collections},
+    author={Yoo, Seong Jong and Liu, Sisung and Arshad, Muhammad Zeeshan and Kim, Jinhyeok and Kim, Young Min and Aloimonos, Yiannis and Fermuller, Cornelia and Joo, Kyungdon and Kim, Jinwook and Hong, Je Hyeong},
+    journal={arXiv preprint arXiv:2502.13986},
+    year={2025}
 }
 ```
 ```
 @inproceedings{HongandYoo_2021_ICCV,
-	author    = {Hong, Je Hyeong and Yoo, Seong Jong and Zeeshan, Muhammad Arshad and Kim, Young Min and Kim, Jinwook},
 	title     = {Structure-From-Sherds: Incremental 3D Reassembly of Axially Symmetric Pots From Unordered and Mixed Fragment Collections},
+  author    = {Hong, Je Hyeong and Yoo, Seong Jong and Zeeshan, Muhammad Arshad and Kim, Young Min and Kim, Jinwook},
 	journal   = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
 	month     = {October},
 	year      = {2021},
 	pages     = {5443-5451}
+}
+```
+```
+@inproceedings{hong2019potsac,
+  title={PotSAC: A Robust Axis Estimator for Axially Symmetric Pot Fragments.},
+  author={Hong, Je Hyeong and Kim, Young Min and Wi, Koang-Chul and Kim, Jinwook},
+  booktitle={ICCV Workshops},
+  pages={1421--1428},
+  year={2019}
 }
 ```
